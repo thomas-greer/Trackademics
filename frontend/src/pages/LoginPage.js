@@ -12,26 +12,60 @@ function LoginPage() {
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    const result = await dispatch(createUser({ username, email }));
+    if (!email) {
+      alert("Please enter email");
+      return;
+    }
 
-    if (result.payload && result.payload.id) {
-      dispatch(login(result.payload));
-      localStorage.setItem("user", JSON.stringify(result.payload));
-      navigate("/feed");
-    } else {
-      alert("Error creating account");
+    try {
+      // 🔐 Try login first
+      const res = await fetch("http://127.0.0.1:8000/api/users/login/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        // ✅ existing user
+        dispatch(login(data));
+        localStorage.setItem("user", JSON.stringify(data));
+        navigate("/feed");
+      } else {
+        // 🆕 create new user
+        if (!username) {
+          alert("Enter username to create account");
+          return;
+        }
+
+        const result = await dispatch(createUser({ username, email }));
+
+        if (result.payload && result.payload.id) {
+          dispatch(login(result.payload));
+          localStorage.setItem("user", JSON.stringify(result.payload));
+          navigate("/feed");
+        } else {
+          alert("Error creating account");
+        }
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert("Server error");
     }
   };
 
   return (
     <div className="login-page">
-
       <div className="login-card">
-        <h1>Trackademic</h1>
-        <p className="subtitle">Making studying fun</p>
+        <h1 style={{ color: "#ff5a5f" }}>Trackademic</h1>
+        <p className="subtitle">Make studying social 📚</p>
 
         <input
-          placeholder="Username"
+          placeholder="Username (only needed for signup)"
           onChange={(e) => setUsername(e.target.value)}
         />
 
@@ -41,10 +75,9 @@ function LoginPage() {
         />
 
         <button onClick={handleLogin}>
-          Get Started
+          Continue
         </button>
       </div>
-
     </div>
   );
 }

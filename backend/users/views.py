@@ -67,3 +67,23 @@ def study_sessions(request):
             "subject": session.subject,
             "caption": session.caption,
         })
+
+@api_view(['POST'])
+def login_user(request):
+    data = request.data
+    email = data.get('email')
+
+    if not email:
+        return Response({"error": "Email required"}, status=400)
+
+    try:
+        user = User.objects.get(email=email)
+
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email
+        })
+
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
