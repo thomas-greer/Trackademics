@@ -1,13 +1,83 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: #f5f7fa;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* center content */
+.container {
+  max-width: 600px;   /* was 450px → wider */
+  margin: 40px auto;
+  padding: 0 15px;
+}
+
+.card {
+  background: #f5f6f7;   /* lighter grey */
+  padding: 18px;
+  margin-bottom: 20px;
+  border-radius: 16px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+/* buttons */
+button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background-color: #ff5a5f;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #e14b50;
+}
+
+/* inputs */
+input {
+  padding: 8px;
+  margin-right: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+
+
+/* full page center */
+.login-page {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #dcdcdc;
+}
+
+/* login card */
+.login-card {
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+  width: 320px;
+  text-align: center;
+}
+
+/* subtitle */
+.subtitle {
+  color: #666;
+  margin-bottom: 20px;
+}
+
+/* inputs */
+.login-card input {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+/* button */
+.login-card button {
+  width: 100%;
+  margin-top: 10px;
+  background-color: #ff5a5f;
+  font-weight: bold;
 }

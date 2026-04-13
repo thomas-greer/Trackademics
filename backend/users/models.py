@@ -10,6 +10,7 @@ class User(models.Model):
 
 class StudySession(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    duration = models.IntegerField()  # minutes
+    duration = models.IntegerField()
     subject = models.CharField(max_length=100)
+    caption = models.TextField(blank=True, null=True)  # ✅ THIS
     created_at = models.DateTimeField(auto_now_add=True)

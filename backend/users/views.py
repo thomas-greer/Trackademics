@@ -11,10 +11,19 @@ def get_users(request):
 
     elif request.method == 'POST':
         data = request.data
+
+        username = data.get('username')
+        email = data.get('email')
+
+        # 🔥 Basic validation (prevents crashes)
+        if not username or not email:
+            return Response({"error": "Missing fields"}, status=400)
+
         user = User.objects.create(
-            username=data.get('username'),
-            email=data.get('email')
+            username=username,
+            email=email
         )
+
         return Response({
             "id": user.id,
             "username": user.username,
@@ -29,10 +38,11 @@ def study_sessions(request):
         data = [
             {
                 "id": session.id,
-                "user": session.user.username,  # 👈 THIS is the fix
-                "user_id": session.user.id,     # keep this for filtering
+                "user": session.user.username,
+                "user_id": session.user.id,
                 "duration": session.duration,
-                "subject": session.subject
+                "subject": session.subject,
+                "caption": session.caption,
             }
             for session in sessions
         ]
@@ -45,7 +55,8 @@ def study_sessions(request):
         session = StudySession.objects.create(
             user_id=data.get('user'),
             duration=data.get('duration'),
-            subject=data.get('subject')
+            subject=data.get('subject'),
+            caption=data.get('caption')
         )
 
         return Response({
@@ -53,5 +64,6 @@ def study_sessions(request):
             "user": session.user.username,
             "user_id": session.user.id,
             "duration": session.duration,
-            "subject": session.subject
+            "subject": session.subject,
+            "caption": session.caption,
         })
