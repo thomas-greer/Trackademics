@@ -52,12 +52,13 @@ function FeedPage() {
     }));
   };
 
+  
   return (
     <div>
       <Navbar />
 
       <div className="container">
-        <h1>Global Feed</h1>
+        <h1>Feed</h1>
 
         {uniqueSessions.length === 0 && (
           <p>No activity yet. Be the first to study 📚</p>
