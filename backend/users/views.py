@@ -1,12 +1,12 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import User
-from .models import StudySession, User
+from django.contrib.auth.models import User
+from .models import Post
 
 @api_view(['GET', 'POST'])
 def get_users(request):
     if request.method == 'GET':
-        users = User.objects.all().values()
+        users = User.objects.all().values("id", "username", "email")
         return Response(list(users))
 
     elif request.method == 'POST':
@@ -19,10 +19,10 @@ def get_users(request):
         if not username or not email:
             return Response({"error": "Missing fields"}, status=400)
 
-        user = User.objects.create(
-            username=username,
-            email=email
-        )
+        if User.objects.filter(username=username).exists():
+            return Response({"error": "Username already exists"}, status=400)
+
+        user = User.objects.create(username=username, email=email)
 
         return Response({
             "id": user.id,
@@ -33,15 +33,15 @@ def get_users(request):
 @api_view(['GET', 'POST'])
 def study_sessions(request):
     if request.method == 'GET':
-        sessions = StudySession.objects.all()
+        sessions = Post.objects.select_related("user").all()
 
         data = [
             {
                 "id": session.id,
                 "user": session.user.username,
                 "user_id": session.user.id,
-                "duration": session.duration,
-                "subject": session.subject,
+                "duration": session.duration_minutes,
+                "subject": session.category,
                 "caption": session.caption,
             }
             for session in sessions
@@ -52,10 +52,10 @@ def study_sessions(request):
     elif request.method == 'POST':
         data = request.data
 
-        session = StudySession.objects.create(
+        session = Post.objects.create(
             user_id=data.get('user'),
-            duration=data.get('duration'),
-            subject=data.get('subject'),
+            duration_minutes=data.get('duration'),
+            category=data.get('subject'),
             caption=data.get('caption')
         )
 
@@ -63,8 +63,8 @@ def study_sessions(request):
             "id": session.id,
             "user": session.user.username,
             "user_id": session.user.id,
-            "duration": session.duration,
-            "subject": session.subject,
+            "duration": session.duration_minutes,
+            "subject": session.category,
             "caption": session.caption,
         })
 
