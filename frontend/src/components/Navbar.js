@@ -25,7 +25,7 @@ function Navbar() {
       border: "1px solid #eee",
       boxShadow: "0 6px 16px rgba(0,0,0,0.08)"
     }}>
-      <h2 style={{ margin: 0, color: "#ff5a5f", letterSpacing: "0.3px" }}>
+      <h2 style={{ margin: 0, color: "#1f3b73", letterSpacing: "0.3px" }}>
         Trackademic
       </h2>
   
@@ -38,7 +38,7 @@ function Navbar() {
             borderRadius: "999px",
             fontWeight: 600,
             color: isActive ? "#ffffff" : "#444",
-            backgroundColor: isActive ? "#ff5a5f" : "transparent",
+            backgroundColor: isActive ? "#1f3b73" : "transparent",
             transition: "all 0.2s ease",
           })}
         >
@@ -52,7 +52,7 @@ function Navbar() {
             borderRadius: "999px",
             fontWeight: 600,
             color: isActive ? "#ffffff" : "#444",
-            backgroundColor: isActive ? "#ff5a5f" : "transparent",
+            backgroundColor: isActive ? "#1f3b73" : "transparent",
             transition: "all 0.2s ease",
           })}
         >
@@ -66,7 +66,7 @@ function Navbar() {
             borderRadius: "999px",
             fontWeight: 600,
             color: isActive ? "#ffffff" : "#444",
-            backgroundColor: isActive ? "#ff5a5f" : "transparent",
+            backgroundColor: isActive ? "#1f3b73" : "transparent",
             transition: "all 0.2s ease",
           })}
         >

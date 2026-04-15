@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User
 from django.utils import timezone
-from .models import Post, Comment, UserStats
+from django.db import IntegrityError
+from .models import Post, Comment, UserStats, Follower
 
 from datetime import timedelta
 
@@ -53,23 +54,42 @@ def _sync_user_stats(user):
     return user_stats
 
 
+def _serialize_user(user, viewer=None):
+    stats = _sync_user_stats(user)
+    followers_count = Follower.objects.filter(following=user).count()
+    following_count = Follower.objects.filter(follower=user).count()
+    is_following = False
+
+    if viewer and viewer.id != user.id:
+        is_following = Follower.objects.filter(
+            follower=viewer,
+            following=user
+        ).exists()
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "stats": {
+            "current_streak": stats.current_streak,
+            "best_streak": stats.best_streak,
+        },
+        "followers_count": followers_count,
+        "following_count": following_count,
+        "is_following": is_following,
+    }
+
+
 @api_view(['GET', 'POST'])
 def get_users(request):
     if request.method == 'GET':
         users = User.objects.all()
+        viewer_id = request.query_params.get("viewer_id")
+        viewer = User.objects.filter(id=viewer_id).first() if viewer_id else None
 
         data = [
-            {
-                "id": u.id,
-                "username": u.username,
-                "email": u.email,
-                "stats": {
-                    "current_streak": stats.current_streak,
-                    "best_streak": stats.best_streak,
-                }
-            }
+            _serialize_user(u, viewer=viewer)
             for u in users
-            for stats in [_sync_user_stats(u)]
         ]
 
         return Response(data)
@@ -90,7 +110,10 @@ def get_users(request):
             "stats": {
                 "current_streak": stats.current_streak,
                 "best_streak": stats.best_streak
-            }
+            },
+            "followers_count": 0,
+            "following_count": 0,
+            "is_following": False,
         })
 
 
@@ -168,7 +191,10 @@ def login_user(request):
             "stats": {
                 "current_streak": stats.current_streak,
                 "best_streak": stats.best_streak,
-            }
+            },
+            "followers_count": Follower.objects.filter(following=user).count(),
+            "following_count": Follower.objects.filter(follower=user).count(),
+            "is_following": False,
         })
 
     except User.DoesNotExist:
@@ -233,3 +259,106 @@ def session_comments(request, session_id):
         },
         status=status.HTTP_201_CREATED
     )
+
+
+@api_view(['GET'])
+def user_profile(request, user_id):
+    viewer_id = request.query_params.get("viewer_id")
+    viewer = User.objects.filter(id=viewer_id).first() if viewer_id else None
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response(_serialize_user(user, viewer=viewer))
+
+
+@api_view(['GET'])
+def user_connections(request, user_id):
+    connection_type = request.query_params.get("type")
+    if connection_type not in ["followers", "following"]:
+        return Response(
+            {"error": "type must be 'followers' or 'following'"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        if connection_type == "followers":
+            relationships = Follower.objects.select_related("follower").filter(following=user)
+            users = [rel.follower for rel in relationships]
+        else:
+            relationships = Follower.objects.select_related("following").filter(follower=user)
+            users = [rel.following for rel in relationships]
+
+        data = [
+            {
+                "id": related_user.id,
+                "username": related_user.username,
+            }
+            for related_user in users
+        ]
+
+        return Response({
+            "type": connection_type,
+            "count": len(data),
+            "users": data,
+        })
+    except Exception as exc:
+        return Response(
+            {"error": f"Unexpected server error: {str(exc)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST', 'DELETE'])
+def user_follow(request, user_id):
+    follower_id = request.data.get("follower_id") or request.query_params.get("follower_id")
+    if not follower_id:
+        return Response(
+            {"error": "follower_id is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        follower_id = int(follower_id)
+    except (TypeError, ValueError):
+        return Response(
+            {"error": "follower_id must be a valid integer"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        follower = User.objects.get(id=follower_id)
+        following = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if follower.id == following.id:
+        return Response(
+            {"error": "You cannot follow yourself"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        if request.method == 'POST':
+            Follower.objects.get_or_create(follower=follower, following=following)
+        else:
+            Follower.objects.filter(follower=follower, following=following).delete()
+    except IntegrityError:
+        return Response(
+            {"error": "Could not update follow relationship"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except Exception as exc:
+        return Response(
+            {"error": f"Unexpected server error: {str(exc)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+    return Response(_serialize_user(following, viewer=follower))

@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { fetchSessions } from "../features/sessionsSlice";
 import Navbar from "../components/Navbar";
 
+const toNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 function FeedPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const sessions = useSelector(state => state.sessions.list);
 
   let user = useSelector(state => state.auth.user);
@@ -20,15 +27,17 @@ function FeedPage() {
   const [comments, setComments] = useState({});
   const [commentInput, setCommentInput] = useState({});
   const [showCommentBox, setShowCommentBox] = useState({});
+  const [updatingFollowId, setUpdatingFollowId] = useState(null);
+  const currentUserId = toNumber(user?.id);
 
   useEffect(() => {
     dispatch(fetchSessions());
 
-    fetch("http://127.0.0.1:8000/api/users/")
+    fetch(`http://127.0.0.1:8000/api/users/?viewer_id=${currentUserId || ""}`)
       .then(res => res.json())
       .then(data => setUsers(data));
 
-  }, [dispatch]);
+  }, [dispatch, currentUserId]);
 
   useEffect(() => {
     const nextComments = {};
@@ -122,6 +131,53 @@ function FeedPage() {
     0
   );
 
+  const handleFollowUser = async (targetUserId) => {
+    if (!currentUserId || !targetUserId || currentUserId === targetUserId) return;
+    setUpdatingFollowId(targetUserId);
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/users/${targetUserId}/follow/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          follower_id: currentUserId,
+        }),
+      });
+
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { error: raw || "Unexpected response format from server." };
+      }
+
+      if (!res.ok) {
+        alert(data.error || "Could not follow user.");
+        return;
+      }
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          toNumber(u.id) === targetUserId
+            ? {
+                ...u,
+                is_following: true,
+                followers_count: toNumber(data.followers_count),
+              }
+            : u
+        )
+      );
+    } catch (error) {
+      console.error(error);
+      alert("Server error while following user.");
+    } finally {
+      setUpdatingFollowId(null);
+    }
+  };
+
   return (
     <div>
       <Navbar />
@@ -166,7 +222,12 @@ function FeedPage() {
                   </div>
 
                   <div>
-                    <div style={{ fontWeight: "600" }}>{session.user}</div>
+                    <div
+                      style={{ ...userLink, fontWeight: "600" }}
+                      onClick={() => navigate(`/profile/${session.user_id}`)}
+                    >
+                      {session.user}
+                    </div>
                     <div style={timeText}>
                       {formatTimeAgo(session.created_at)}
                     </div>
@@ -236,8 +297,23 @@ function FeedPage() {
               .filter(u => u.username !== user?.username)
               .slice(0, 5)
               .map(u => (
-                <div key={u.id} style={{ marginTop: "8px" }}>
-                  👤 {u.username}
+                <div key={u.id} style={suggestedUserRow}>
+                  <span
+                    style={userLink}
+                    onClick={() => navigate(`/profile/${u.id}`)}
+                  >
+                    👤 {u.username}
+                  </span>
+                  {!u.is_following && (
+                    <button
+                      style={followIconButton}
+                      onClick={() => handleFollowUser(toNumber(u.id))}
+                      disabled={updatingFollowId === toNumber(u.id)}
+                      title="Follow user"
+                    >
+                      +
+                    </button>
+                  )}
                 </div>
               ))}
           </div>
@@ -278,7 +354,7 @@ const avatar = {
   width: "40px",
   height: "40px",
   borderRadius: "50%",
-  backgroundColor: "#ff5a5f",
+  backgroundColor: "#1f3b73",
   color: "white",
   display: "flex",
   alignItems: "center",
@@ -312,6 +388,31 @@ const clickable = {
   cursor: "pointer"
 };
 
+const userLink = {
+  cursor: "pointer",
+  textDecoration: "underline",
+  textUnderlineOffset: "2px",
+};
+
+const suggestedUserRow = {
+  marginTop: "8px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+};
+
+const followIconButton = {
+  width: "24px",
+  height: "24px",
+  borderRadius: "50%",
+  padding: 0,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "16px",
+  lineHeight: 1,
+};
+
 const inputStyle = {
   padding: "6px",
   borderRadius: "6px",
@@ -324,7 +425,7 @@ const buttonStyle = {
   padding: "6px 10px",
   borderRadius: "6px",
   border: "none",
-  backgroundColor: "#ff5a5f",
+  backgroundColor: "#1f3b73",
   color: "white",
   cursor: "pointer"
 };

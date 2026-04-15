@@ -38,6 +38,14 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/profile/:userId"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );

@@ -61,7 +61,7 @@ function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1 style={{ color: "#ff5a5f" }}>Trackademic</h1>
+        <h1 style={{ color: "#1f3b73" }}>Trackademic</h1>
         <p className="subtitle">Make studying social 📚</p>
 
         <input
