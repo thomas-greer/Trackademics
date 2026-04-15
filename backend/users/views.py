@@ -2,6 +2,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.db import IntegrityError
 from .models import Post, Comment, UserStats, Follower
@@ -96,9 +97,32 @@ def get_users(request):
 
     elif request.method == 'POST':
         data = request.data
-        user = User.objects.create(
-            username=data.get('username'),
-            email=data.get('email')
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+
+        if not username or not email or not password:
+            return Response(
+                {"error": "username, email, and password are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {"error": "Username already exists"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if User.objects.filter(email=email).exists():
+            return Response(
+                {"error": "Email already exists"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password
         )
 
         stats = _sync_user_stats(user)
@@ -114,7 +138,7 @@ def get_users(request):
             "followers_count": 0,
             "following_count": 0,
             "is_following": False,
-        })
+        }, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET', 'POST'])
@@ -178,27 +202,35 @@ def study_sessions(request):
 
 @api_view(['POST'])
 def login_user(request):
-    email = request.data.get('email')
+    username = request.data.get('username')
+    password = request.data.get('password')
 
-    try:
-        user = User.objects.get(email=email)
-        stats = _sync_user_stats(user)
+    if not username or not password:
+        return Response(
+            {"error": "username and password are required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-        return Response({
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "stats": {
-                "current_streak": stats.current_streak,
-                "best_streak": stats.best_streak,
-            },
-            "followers_count": Follower.objects.filter(following=user).count(),
-            "following_count": Follower.objects.filter(follower=user).count(),
-            "is_following": False,
-        })
+    user = authenticate(username=username, password=password)
+    if not user:
+        return Response(
+            {"error": "Invalid username or password"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
-    except User.DoesNotExist:
-        return Response({"error": "User not found"}, status=404)
+    stats = _sync_user_stats(user)
+    return Response({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "stats": {
+            "current_streak": stats.current_streak,
+            "best_streak": stats.best_streak,
+        },
+        "followers_count": Follower.objects.filter(following=user).count(),
+        "following_count": Follower.objects.filter(follower=user).count(),
+        "is_following": False,
+    })
 
 
 @api_view(['GET', 'POST'])

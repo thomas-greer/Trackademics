@@ -1,57 +1,79 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-import { createUser } from "../features/usersSlice";
 import { login } from "../features/authSlice";
 import { useNavigate } from "react-router-dom";
 
 function LoginPage() {
-  const [username, setUsername] = useState("");
+  const [isCreateMode, setIsCreateMode] = useState(false);
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    if (!email) {
-      alert("Please enter email");
+    if (!username || !password) {
+      alert("Please enter username and password");
       return;
     }
 
     try {
-      // 🔐 Try login first
       const res = await fetch("http://127.0.0.1:8000/api/users/login/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ username, password })
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        // ✅ existing user
         dispatch(login(data));
         localStorage.setItem("user", JSON.stringify(data));
         navigate("/feed");
       } else {
-        // 🆕 create new user
-        if (!username) {
-          alert("Enter username to create account");
-          return;
-        }
-
-        const result = await dispatch(createUser({ username, email }));
-
-        if (result.payload && result.payload.id) {
-          dispatch(login(result.payload));
-          localStorage.setItem("user", JSON.stringify(result.payload));
-          navigate("/feed");
-        } else {
-          alert("Error creating account");
-        }
+        alert(data.error || "Login failed");
       }
 
+    } catch (err) {
+      console.error(err);
+      alert("Server error");
+    }
+  };
+
+  const handleCreateAccount = async () => {
+    if (!email || !username || !password || !confirmPassword) {
+      alert("Please complete all fields");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/users/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, username, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Could not create account");
+        return;
+      }
+
+      alert("Account created! You can now log in.");
+      setIsCreateMode(false);
+      setPassword("");
+      setConfirmPassword("");
     } catch (err) {
       console.error(err);
       alert("Server error");
@@ -64,18 +86,65 @@ function LoginPage() {
         <h1 style={{ color: "#1f3b73" }}>Trackademic</h1>
         <p className="subtitle">Make studying social 📚</p>
 
+        {isCreateMode && (
+          <input
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        )}
+
         <input
-          placeholder="Username (only needed for signup)"
+          placeholder="Username"
+          value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
 
         <input
-          placeholder="Email"
-          onChange={(e) => setEmail(e.target.value)}
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button onClick={handleLogin}>
-          Continue
+        {isCreateMode && (
+          <input
+            type="password"
+            placeholder="Rewrite Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+        )}
+
+        {isCreateMode ? (
+          <button onClick={handleCreateAccount}>
+            Create Account
+          </button>
+        ) : (
+          <button onClick={handleLogin}>
+            Log In
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            setIsCreateMode((prev) => !prev);
+            setEmail("");
+            setUsername("");
+            setPassword("");
+            setConfirmPassword("");
+          }}
+          style={{
+            marginTop: "10px",
+            background: "transparent",
+            border: "none",
+            color: "#1f3b73",
+            cursor: "pointer",
+            textDecoration: "underline"
+          }}
+        >
+          {isCreateMode ? "Back to Log In" : "Create Account"}
         </button>
       </div>
     </div>
