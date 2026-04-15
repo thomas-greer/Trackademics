@@ -30,6 +30,14 @@ function FeedPage() {
 
   }, [dispatch]);
 
+  useEffect(() => {
+    const nextComments = {};
+    sessions.forEach((session) => {
+      nextComments[session.id] = session.comments || [];
+    });
+    setComments(nextComments);
+  }, [sessions]);
+
   const formatTimeAgo = (timestamp) => {
     if (!timestamp) return "just now";
     const now = new Date();
@@ -62,18 +70,47 @@ function FeedPage() {
     }));
   };
 
-  const handleComment = (id) => {
-    if (!commentInput[id]) return;
+  const handleComment = async (id) => {
+    const content = commentInput[id]?.trim();
+    if (!content) return;
 
-    setComments(prev => ({
-      ...prev,
-      [id]: [...(prev[id] || []), commentInput[id]]
-    }));
+    if (!user?.id) {
+      alert("Please log in before commenting.");
+      return;
+    }
 
-    setCommentInput(prev => ({
-      ...prev,
-      [id]: ""
-    }));
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/users/sessions/${id}/comments/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user: user.id,
+          content,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Could not post comment.");
+        return;
+      }
+
+      setComments((prev) => ({
+        ...prev,
+        [id]: [...(prev[id] || []), data],
+      }));
+
+      setCommentInput((prev) => ({
+        ...prev,
+        [id]: "",
+      }));
+    } catch (error) {
+      console.error(error);
+      alert("Server error while posting comment.");
+    }
   };
 
   const mySessions = sessions.filter(
@@ -177,9 +214,9 @@ function FeedPage() {
                     Post
                   </button>
 
-                  {(comments[session.id] || []).map((c, i) => (
-                    <p key={i} style={{ marginTop: "6px" }}>
-                      💬 {c}
+                  {(comments[session.id] || []).map((c) => (
+                    <p key={c.id} style={{ marginTop: "6px" }}>
+                      💬 <strong>{c.user}:</strong> {c.content}
                     </p>
                   ))}
                 </div>
