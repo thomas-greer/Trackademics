@@ -40,3 +40,11 @@ class Follower(models.Model):
                 name="prevent_self_follow",
             ),
         ]
+
+class UserStats(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="stats")
+    current_streak = models.IntegerField(default=0)
+    best_streak = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.user.username} streaks"

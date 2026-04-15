@@ -2,14 +2,77 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User
-from .models import Post, Comment
+from django.utils import timezone
+from .models import Post, Comment, UserStats
+
+from datetime import timedelta
+
+
+def _calculate_streaks_for_user(user):
+    today = timezone.localdate()
+    post_dates = sorted(
+        {post.created_at.date() for post in Post.objects.filter(user=user)},
+        reverse=True
+    )
+
+    if not post_dates:
+        return 0, 0
+
+    current_streak = 0
+    if post_dates[0] == today:
+        current_streak = 1
+        expected_date = today - timedelta(days=1)
+        for post_date in post_dates[1:]:
+            if post_date == expected_date:
+                current_streak += 1
+                expected_date -= timedelta(days=1)
+            else:
+                break
+
+    best_streak = 1
+    running_streak = 1
+    for previous_date, current_date in zip(post_dates, post_dates[1:]):
+        if current_date == previous_date - timedelta(days=1):
+            running_streak += 1
+        else:
+            running_streak = 1
+        best_streak = max(best_streak, running_streak)
+
+    return current_streak, best_streak
+
+
+def _sync_user_stats(user):
+    user_stats, _ = UserStats.objects.get_or_create(user=user)
+    current_streak, best_streak = _calculate_streaks_for_user(user)
+
+    if user_stats.current_streak != current_streak or user_stats.best_streak != best_streak:
+        user_stats.current_streak = current_streak
+        user_stats.best_streak = best_streak
+        user_stats.save(update_fields=["current_streak", "best_streak"])
+
+    return user_stats
 
 
 @api_view(['GET', 'POST'])
 def get_users(request):
     if request.method == 'GET':
-        users = User.objects.all().values("id", "username", "email")
-        return Response(list(users))
+        users = User.objects.all()
+
+        data = [
+            {
+                "id": u.id,
+                "username": u.username,
+                "email": u.email,
+                "stats": {
+                    "current_streak": stats.current_streak,
+                    "best_streak": stats.best_streak,
+                }
+            }
+            for u in users
+            for stats in [_sync_user_stats(u)]
+        ]
+
+        return Response(data)
 
     elif request.method == 'POST':
         data = request.data
@@ -18,10 +81,16 @@ def get_users(request):
             email=data.get('email')
         )
 
+        stats = _sync_user_stats(user)
+
         return Response({
             "id": user.id,
             "username": user.username,
-            "email": user.email
+            "email": user.email,
+            "stats": {
+                "current_streak": stats.current_streak,
+                "best_streak": stats.best_streak
+            }
         })
 
 
@@ -67,6 +136,9 @@ def study_sessions(request):
             caption=data.get('caption')
         )
 
+        # Recompute from post dates so streak increases once per day and resets correctly.
+        user_stats = _sync_user_stats(session.user)
+
         return Response({
             "id": session.id,
             "user": session.user.username,
@@ -76,6 +148,8 @@ def study_sessions(request):
             "caption": session.caption,
             "created_at": session.created_at,
             "comments": [],
+            "current_streak": user_stats.current_streak,
+            "best_streak": user_stats.best_streak,
         })
 
 
@@ -85,11 +159,16 @@ def login_user(request):
 
     try:
         user = User.objects.get(email=email)
+        stats = _sync_user_stats(user)
 
         return Response({
             "id": user.id,
             "username": user.username,
-            "email": user.email
+            "email": user.email,
+            "stats": {
+                "current_streak": stats.current_streak,
+                "best_streak": stats.best_streak,
+            }
         })
 
     except User.DoesNotExist:
