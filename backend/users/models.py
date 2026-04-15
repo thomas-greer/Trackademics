@@ -20,9 +20,6 @@ class Comment(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Comment by {self.user.username} on Post {self.post.id}"
-
 
 class Follower(models.Model):
     follower = models.ForeignKey(
@@ -43,6 +40,3 @@ class Follower(models.Model):
                 name="prevent_self_follow",
             ),
         ]
-
-    def __str__(self):
-        return f"{self.follower.username} follows {self.following.username}"

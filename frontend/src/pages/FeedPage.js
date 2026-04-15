@@ -16,12 +16,29 @@ function FeedPage() {
     dispatch(fetchSessions());
   }, [dispatch]);
 
+  // ⏱ timestamp formatting
+  const formatTimeAgo = (timestamp) => {
+    if (!timestamp) return "just now";
+
+    const now = new Date();
+    const past = new Date(timestamp);
+    const diff = Math.floor((now - past) / 1000);
+
+    if (diff < 10) return "just now";
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+
+    return past.toLocaleDateString();
+  };
+
   // remove duplicates
   const uniqueSessions = Array.from(
     new Map(sessions.map(s => [s.id, s])).values()
   );
 
-  // ❤️ like handler
+  // ❤️ like
   const handleLike = (id) => {
     setLikes(prev => ({
       ...prev,
@@ -29,7 +46,7 @@ function FeedPage() {
     }));
   };
 
-  // 💬 toggle comment box
+  // 💬 toggle comment
   const toggleCommentBox = (id) => {
     setShowCommentBox(prev => ({
       ...prev,
@@ -52,7 +69,6 @@ function FeedPage() {
     }));
   };
 
-  
   return (
     <div>
       <Navbar />
@@ -71,6 +87,7 @@ function FeedPage() {
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 
+                {/* avatar (initial) */}
                 <div style={{
                   width: "35px",
                   height: "35px",
@@ -89,7 +106,7 @@ function FeedPage() {
               </div>
 
               <span style={{ color: "gray", fontSize: "12px" }}>
-                just now
+                {formatTimeAgo(session.created_at)}
               </span>
             </div>
 
@@ -102,7 +119,6 @@ function FeedPage() {
               ⏱ {session.duration} minutes
             </p>
 
-            {/* 🆕 CAPTION */}
             {session.caption && (
               <p style={{ marginTop: "5px", fontStyle: "italic" }}>
                 {session.caption}
@@ -131,7 +147,7 @@ function FeedPage() {
               </span>
             </div>
 
-            {/* COMMENT BOX (TOGGLED) */}
+            {/* COMMENTS */}
             {showCommentBox[session.id] && (
               <div style={{ marginTop: "10px" }}>
                 <input

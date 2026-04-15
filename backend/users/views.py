@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from django.contrib.auth.models import User
 from .models import Post
 
+
 @api_view(['GET', 'POST'])
 def get_users(request):
     if request.method == 'GET':
@@ -11,18 +12,10 @@ def get_users(request):
 
     elif request.method == 'POST':
         data = request.data
-
-        username = data.get('username')
-        email = data.get('email')
-
-        # 🔥 Basic validation (prevents crashes)
-        if not username or not email:
-            return Response({"error": "Missing fields"}, status=400)
-
-        if User.objects.filter(username=username).exists():
-            return Response({"error": "Username already exists"}, status=400)
-
-        user = User.objects.create(username=username, email=email)
+        user = User.objects.create(
+            username=data.get('username'),
+            email=data.get('email')
+        )
 
         return Response({
             "id": user.id,
@@ -30,21 +23,23 @@ def get_users(request):
             "email": user.email
         })
 
+
 @api_view(['GET', 'POST'])
 def study_sessions(request):
     if request.method == 'GET':
-        sessions = Post.objects.select_related("user").all()
+        sessions = Post.objects.select_related("user").all().order_by('-created_at')
 
         data = [
             {
-                "id": session.id,
-                "user": session.user.username,
-                "user_id": session.user.id,
-                "duration": session.duration_minutes,
-                "subject": session.category,
-                "caption": session.caption,
+                "id": s.id,
+                "user": s.user.username,
+                "user_id": s.user.id,
+                "duration": s.duration_minutes,
+                "subject": s.category,
+                "caption": s.caption,
+                "created_at": s.created_at,
             }
-            for session in sessions
+            for s in sessions
         ]
 
         return Response(data)
@@ -66,15 +61,13 @@ def study_sessions(request):
             "duration": session.duration_minutes,
             "subject": session.category,
             "caption": session.caption,
+            "created_at": session.created_at,
         })
+
 
 @api_view(['POST'])
 def login_user(request):
-    data = request.data
-    email = data.get('email')
-
-    if not email:
-        return Response({"error": "Email required"}, status=400)
+    email = request.data.get('email')
 
     try:
         user = User.objects.get(email=email)
