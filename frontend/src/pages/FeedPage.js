@@ -16,6 +16,14 @@ function FeedPage() {
     dispatch(fetchSessions());
   }, [dispatch]);
 
+  useEffect(() => {
+    const nextComments = {};
+    sessions.forEach((session) => {
+      nextComments[session.id] = session.comments || [];
+    });
+    setComments(nextComments);
+  }, [sessions]);
+
   // ⏱ timestamp formatting
   const formatTimeAgo = (timestamp) => {
     if (!timestamp) return "just now";
@@ -55,18 +63,50 @@ function FeedPage() {
   };
 
   // 💬 submit comment
-  const handleComment = (id) => {
-    if (!commentInput[id]) return;
+  const handleComment = async (id) => {
+    const content = commentInput[id]?.trim();
+    if (!content) return;
 
-    setComments(prev => ({
-      ...prev,
-      [id]: [...(prev[id] || []), commentInput[id]]
-    }));
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      alert("Please log in before commenting.");
+      return;
+    }
 
-    setCommentInput(prev => ({
-      ...prev,
-      [id]: ""
-    }));
+    const user = JSON.parse(storedUser);
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/users/sessions/${id}/comments/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user: user.id,
+          content,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Could not post comment.");
+        return;
+      }
+
+      setComments((prev) => ({
+        ...prev,
+        [id]: [...(prev[id] || []), data],
+      }));
+
+      setCommentInput((prev) => ({
+        ...prev,
+        [id]: "",
+      }));
+    } catch (error) {
+      console.error(error);
+      alert("Server error while posting comment.");
+    }
   };
 
   return (
@@ -166,9 +206,9 @@ function FeedPage() {
                   Post
                 </button>
 
-                {(comments[session.id] || []).map((c, i) => (
-                  <p key={i} style={{ fontSize: "13px", marginTop: "5px" }}>
-                    💬 {c}
+                {(comments[session.id] || []).map((c) => (
+                  <p key={c.id} style={{ fontSize: "13px", marginTop: "5px" }}>
+                    💬 <strong>{c.user}:</strong> {c.content}
                   </p>
                 ))}
               </div>
