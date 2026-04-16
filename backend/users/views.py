@@ -11,7 +11,18 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db.models import IntegerField, Prefetch, Q, Sum, Value
 from django.db.models.functions import Coalesce
-from .models import Comment, Follower, Post, UserProfile, UserStats
+from .models import (
+    Comment,
+    Conversation,
+    ConversationParticipant,
+    Follower,
+    Notification,
+    Message,
+    Post,
+    PostLike,
+    UserProfile,
+    UserStats,
+)
 
 from datetime import timedelta
 
@@ -132,8 +143,21 @@ def _serialize_session_post(request, s):
         "subject": s.category,
         "caption": s.caption,
         "created_at": s.created_at,
+        "likes_count": s.likes.count(),
         "comments": [_serialize_comment(request, c) for c in s.comments.all()],
     }
+
+
+def _create_notification(recipient, actor, notif_type, text, **kwargs):
+    if not recipient or not actor or recipient.id == actor.id:
+        return
+    Notification.objects.create(
+        recipient=recipient,
+        actor=actor,
+        type=notif_type,
+        text=text,
+        **kwargs,
+    )
 
 
 @api_view(['GET', 'POST'])
@@ -361,6 +385,14 @@ def session_comments(request, session_id):
 
     payload = _serialize_comment(request, comment)
     payload["post_id"] = post.id
+    _create_notification(
+        recipient=post.user,
+        actor=user,
+        notif_type=Notification.TYPE_COMMENT,
+        text=f"{user.username} commented on your post.",
+        post=post,
+        comment=comment,
+    )
     return Response(payload, status=status.HTTP_201_CREATED)
 
 
@@ -782,3 +814,250 @@ def user_follow(request, user_id):
         )
 
     return Response(_serialize_user(request, following, viewer=follower))
+
+
+def _conversation_title(conversation, viewer_id):
+    if conversation.is_group and conversation.name:
+        return conversation.name
+    other = (
+        conversation.participants.exclude(id=viewer_id).order_by("username").first()
+    )
+    if other:
+        return other.username
+    return "Direct message"
+
+
+def _serialize_message(msg):
+    return {
+        "id": msg.id,
+        "conversation_id": msg.conversation_id,
+        "sender_id": msg.sender_id,
+        "sender_username": msg.sender.username,
+        "content": msg.content,
+        "created_at": msg.created_at,
+    }
+
+
+def _serialize_conversation(conversation, viewer_id):
+    latest = conversation.messages.select_related("sender").order_by("-created_at").first()
+    participant_ids = list(
+        conversation.participants.values_list("id", flat=True)
+    )
+    return {
+        "id": conversation.id,
+        "created_at": conversation.created_at,
+        "name": conversation.name,
+        "is_group": conversation.is_group,
+        "title": _conversation_title(conversation, viewer_id),
+        "participant_ids": participant_ids,
+        "participants": [
+            {
+                "id": u.id,
+                "username": u.username,
+                "avatar_url": "",
+            }
+            for u in conversation.participants.order_by("username")
+        ],
+        "latest_message": _serialize_message(latest) if latest else None,
+    }
+
+
+@api_view(["GET", "POST"])
+def messaging_conversations(request):
+    if request.method == "GET":
+        viewer_raw = request.query_params.get("viewer_id")
+    else:
+        viewer_raw = request.data.get("viewer_id")
+    if not viewer_raw:
+        return Response({"error": "viewer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        viewer_id = int(viewer_raw)
+    except (TypeError, ValueError):
+        return Response({"error": "viewer_id must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+    viewer = User.objects.filter(id=viewer_id).first()
+    if not viewer:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "GET":
+        conversations = (
+            Conversation.objects.filter(participants=viewer)
+            .prefetch_related("participants", "messages__sender")
+            .order_by("-created_at")
+            .distinct()
+        )
+        payload = [_serialize_conversation(c, viewer_id) for c in conversations]
+        payload.sort(
+            key=lambda c: (
+                c["latest_message"]["created_at"] if c["latest_message"] else c["created_at"]
+            ),
+            reverse=True,
+        )
+        return Response(payload)
+
+    participant_ids = request.data.get("participant_ids") or []
+    if not isinstance(participant_ids, list):
+        return Response({"error": "participant_ids must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+    cleaned = set()
+    for p in participant_ids:
+        try:
+            cleaned.add(int(p))
+        except (TypeError, ValueError):
+            return Response({"error": "participant_ids must contain integers"}, status=status.HTTP_400_BAD_REQUEST)
+    cleaned.add(viewer_id)
+    participants = list(User.objects.filter(id__in=cleaned))
+    if len(participants) != len(cleaned):
+        return Response({"error": "One or more participants were not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    is_group = len(cleaned) > 2
+    name = (request.data.get("name") or "").strip() if is_group else ""
+    if is_group and not name:
+        name = "Study Group"
+
+    if not is_group and len(cleaned) == 2:
+        existing = (
+            Conversation.objects.filter(is_group=False, participants__id=viewer_id)
+            .filter(participants__id=list(cleaned - {viewer_id})[0])
+            .distinct()
+            .first()
+        )
+        if existing:
+            return Response(_serialize_conversation(existing, viewer_id))
+
+    with transaction.atomic():
+        convo = Conversation.objects.create(name=name, is_group=is_group, created_by=viewer)
+        ConversationParticipant.objects.bulk_create(
+            [ConversationParticipant(conversation=convo, user=u) for u in participants]
+        )
+    convo = Conversation.objects.prefetch_related("participants", "messages__sender").get(id=convo.id)
+    return Response(_serialize_conversation(convo, viewer_id), status=status.HTTP_201_CREATED)
+
+
+@api_view(["DELETE"])
+def messaging_conversation_detail(request, conversation_id):
+    viewer_raw = request.query_params.get("viewer_id") or request.data.get("viewer_id")
+    if not viewer_raw:
+        return Response({"error": "viewer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        viewer_id = int(viewer_raw)
+    except (TypeError, ValueError):
+        return Response({"error": "viewer_id must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not ConversationParticipant.objects.filter(conversation_id=conversation_id, user_id=viewer_id).exists():
+        return Response({"error": "You are not in this conversation"}, status=status.HTTP_403_FORBIDDEN)
+
+    convo = Conversation.objects.filter(id=conversation_id).first()
+    if not convo:
+        return Response({"error": "Conversation not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    convo.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["GET", "POST"])
+def messaging_conversation_messages(request, conversation_id):
+    if request.method == "GET":
+        viewer_raw = request.query_params.get("viewer_id")
+    else:
+        viewer_raw = request.data.get("viewer_id")
+    if not viewer_raw:
+        return Response({"error": "viewer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        viewer_id = int(viewer_raw)
+    except (TypeError, ValueError):
+        return Response({"error": "viewer_id must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+    if not ConversationParticipant.objects.filter(conversation_id=conversation_id, user_id=viewer_id).exists():
+        return Response({"error": "You are not in this conversation"}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == "GET":
+        msgs = Message.objects.filter(conversation_id=conversation_id).select_related("sender").order_by("created_at")
+        return Response([_serialize_message(m) for m in msgs])
+
+    content = (request.data.get("content") or "").strip()
+    if not content:
+        return Response({"error": "content is required"}, status=status.HTTP_400_BAD_REQUEST)
+    msg = Message.objects.create(conversation_id=conversation_id, sender_id=viewer_id, content=content)
+    msg = Message.objects.select_related("sender").get(id=msg.id)
+    other_participants = User.objects.filter(
+        conversation_links__conversation_id=conversation_id
+    ).exclude(id=viewer_id).distinct()
+    for recipient in other_participants:
+        _create_notification(
+            recipient=recipient,
+            actor=msg.sender,
+            notif_type=Notification.TYPE_MESSAGE,
+            text=f"{msg.sender.username} sent you a message.",
+            message=msg,
+            conversation_id=conversation_id,
+        )
+    return Response(_serialize_message(msg), status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+def session_like(request, session_id):
+    user_id = request.data.get("user") or request.query_params.get("user_id")
+    if not user_id:
+        return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        return Response({"error": "user_id must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+    user = User.objects.filter(id=user_id).first()
+    post = Post.objects.filter(id=session_id).first()
+    if not user or not post:
+        return Response({"error": "User or post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    like, created = PostLike.objects.get_or_create(post=post, user=user)
+    if created:
+        _create_notification(
+            recipient=post.user,
+            actor=user,
+            notif_type=Notification.TYPE_LIKE,
+            text=f"{user.username} liked your post.",
+            post=post,
+        )
+    return Response({"liked": created, "likes_count": post.likes.count()})
+
+
+@api_view(["GET"])
+def notifications_list(request):
+    user_id = request.query_params.get("user_id")
+    if not user_id:
+        return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        return Response({"error": "user_id must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+    notifications = Notification.objects.filter(recipient_id=user_id).select_related("actor")[:40]
+    data = [
+        {
+            "id": n.id,
+            "type": n.type,
+            "text": n.text,
+            "is_read": n.is_read,
+            "actor_id": n.actor_id,
+            "actor_username": n.actor.username,
+            "conversation_id": n.conversation_id,
+            "post_id": n.post_id,
+            "created_at": n.created_at,
+        }
+        for n in notifications
+    ]
+    unread_count = Notification.objects.filter(recipient_id=user_id, is_read=False).count()
+    return Response({"unread_count": unread_count, "notifications": data})
+
+
+@api_view(["POST"])
+def notifications_mark_read(request):
+    user_id = request.data.get("user_id")
+    if not user_id:
+        return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        return Response({"error": "user_id must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+    notif_id = request.data.get("notification_id")
+    qs = Notification.objects.filter(recipient_id=user_id, is_read=False)
+    if notif_id:
+        qs = qs.filter(id=notif_id)
+    qs.update(is_read=True)
+    return Response({"ok": True})

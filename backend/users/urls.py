@@ -11,6 +11,12 @@ from .views import (
     community_study_stats,
     user_connections,
     user_follow,
+    messaging_conversations,
+    messaging_conversation_detail,
+    messaging_conversation_messages,
+    session_like,
+    notifications_list,
+    notifications_mark_read,
 )
 
 urlpatterns = [
@@ -23,6 +29,12 @@ urlpatterns = [
     path('<int:user_id>/follow/', user_follow),
     path('sessions/', study_sessions),
     path('sessions/<int:session_id>/comments/', session_comments),
+    path('sessions/<int:session_id>/likes/', session_like),
     path('sessions/<int:session_id>/', session_delete),
     path('login/', login_user),  # 👈 IMPORTANT
+    path('messages/conversations/', messaging_conversations),
+    path('messages/conversations/<int:conversation_id>/', messaging_conversation_detail),
+    path('messages/conversations/<int:conversation_id>/messages/', messaging_conversation_messages),
+    path('notifications/', notifications_list),
+    path('notifications/mark-read/', notifications_mark_read),
 ]

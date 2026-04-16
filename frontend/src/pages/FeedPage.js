@@ -68,10 +68,13 @@ function FeedPage() {
 
   useEffect(() => {
     const nextComments = {};
+    const nextLikes = {};
     sessions.forEach((session) => {
       nextComments[session.id] = session.comments || [];
+      nextLikes[session.id] = toNumber(session.likes_count);
     });
     setComments(nextComments);
+    setLikes(nextLikes);
   }, [sessions]);
 
   const formatTimeAgo = (timestamp) => {
@@ -103,11 +106,20 @@ function FeedPage() {
     })
     .slice(0, 5);
 
-  const handleLike = (id) => {
-    setLikes(prev => ({
-      ...prev,
-      [id]: (prev[id] || 0) + 1
-    }));
+  const handleLike = async (id) => {
+    if (!user?.id) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/users/sessions/${id}/likes/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user: user.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) return;
+      setLikes((prev) => ({ ...prev, [id]: toNumber(data.likes_count) }));
+    } catch {
+      // no-op
+    }
   };
 
   const toggleCommentBox = (id) => {
@@ -244,7 +256,8 @@ function FeedPage() {
       }}>
 
         {/* LEFT PANEL */}
-        <div style={{ marginTop: "60px" }}>
+        <div>
+          <div style={columnHeaderSpacer} aria-hidden />
           <div style={cardStyle}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
               <UserAvatar avatarUrl={user?.avatar_url} username={user?.username} size={44} />
@@ -259,10 +272,11 @@ function FeedPage() {
         <div>
 
           <h2 style={{
-            marginBottom: "20px",
+            margin: "0 0 20px",
             color: colors.primary,
             fontWeight: 800,
             fontSize: "28px",
+            lineHeight: "40px",
             letterSpacing: "-0.02em",
           }}>Feed</h2>
 
@@ -407,7 +421,8 @@ function FeedPage() {
         </div>
 
         {/* RIGHT PANEL */}
-        <div style={{ marginTop: "60px" }}>
+        <div>
+          <div style={columnHeaderSpacer} aria-hidden />
           <div style={cardStyle}>
             <h3 style={{ color: colors.primary, fontWeight: 700 }}>Suggested Users</h3>
 
@@ -464,6 +479,10 @@ const cardStyle = {
   borderRadius: radius.lg,
   border: `1px solid ${colors.cardBorder}`,
   boxShadow: shadows.sm,
+};
+
+const columnHeaderSpacer = {
+  height: "60px",
 };
 
 const headerRow = {

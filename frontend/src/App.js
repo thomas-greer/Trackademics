@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import FeedPage from "./pages/FeedPage";
 import CreateSessionPage from "./pages/CreateSessionPage";
 import ProfilePage from "./pages/ProfilePage";
+import MessagesPage from "./pages/MessagesPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -30,6 +31,14 @@ function App() {
           }
         />
 
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <MessagesPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/profile"
           element={
