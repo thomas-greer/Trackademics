@@ -83,8 +83,8 @@ function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1 style={{ color: "#1f3b73" }}>Trackademic</h1>
-        <p className="subtitle">Make studying social 📚</p>
+        <h1>Trackademic</h1>
+        <p className="subtitle">Make studying social</p>
 
         {isCreateMode && (
           <input
@@ -137,11 +137,7 @@ function LoginPage() {
           }}
           style={{
             marginTop: "10px",
-            background: "transparent",
-            border: "none",
-            color: "#1f3b73",
             cursor: "pointer",
-            textDecoration: "underline"
           }}
         >
           {isCreateMode ? "Back to Log In" : "Create Account"}

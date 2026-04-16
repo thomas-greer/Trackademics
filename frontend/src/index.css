@@ -1,83 +1,225 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --color-primary: #4e598c;
+  --color-primary-hover: #3f486f;
+  --color-accent: #f9c784;
+  --color-accent-hover: #f5b85a;
+  --color-accent-hover: #f5b85a;
+  --color-bg: #ffffff;
+  --color-card: #edeff5;
+  --color-card-border: #dde2ee;
+  --color-text: #1a1f2e;
+  --color-text-muted: #5a6178;
+  --color-text-subtle: #8b92a5;
+  --color-danger: #9c3d52;
+  --shadow-sm: 0 2px 14px rgba(78, 89, 140, 0.08);
+  --shadow-md: 0 10px 36px rgba(78, 89, 140, 0.12);
+  --radius: 16px;
+  --radius-input: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  background-color: #f5f7fa;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* center content */
 .container {
-  max-width: 600px;   /* was 450px → wider */
-  margin: 40px auto;
-  padding: 0 15px;
+  max-width: 640px;
+  margin: 32px auto 48px;
+  padding: 0 20px;
 }
 
 .card {
-  background: #f5f6f7;   /* lighter grey */
-  padding: 18px;
+  background: var(--color-card);
+  padding: 20px;
   margin-bottom: 20px;
-  border-radius: 16px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-card-border);
+  box-shadow: var(--shadow-sm);
 }
 
-/* buttons */
+/* buttons — primary; outline handled per-component */
 button {
-  padding: 8px 12px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 6px;
-  background-color: #1f3b73;
-  color: white;
+  border-radius: var(--radius-input);
+  background-color: var(--color-primary);
+  color: #fff;
   cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background-color 0.15s ease, transform 0.1s ease;
 }
 
-button:hover {
-  background-color: #162d57;
+button:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* inputs */
-input {
-  padding: 8px;
+input,
+textarea {
+  padding: 10px 12px;
   margin-right: 8px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--color-card-border);
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(78, 89, 140, 0.15);
+}
 
 /* full page center */
 .login-page {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #dcdcdc;
+  padding: 24px;
+  background: var(--color-bg);
+  background-image: radial-gradient(
+    ellipse 120% 80% at 50% -20%,
+    rgba(249, 199, 132, 0.22),
+    transparent 55%
+  );
 }
 
 /* login card */
 .login-card {
-  background: white;
-  padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.15);
-  width: 320px;
+  background: var(--color-card);
+  padding: 36px 32px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-card-border);
+  box-shadow: var(--shadow-md);
+  width: 100%;
+  max-width: 380px;
   text-align: center;
+  border-top: 4px solid var(--color-accent);
+}
+
+.login-card h1 {
+  color: var(--color-primary);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
 }
 
 /* subtitle */
 .subtitle {
-  color: #666;
-  margin-bottom: 20px;
+  color: var(--color-text-muted);
+  margin-bottom: 22px;
+  font-size: 15px;
 }
 
-/* inputs */
+/* inputs in login */
 .login-card input {
   width: 100%;
-  margin-bottom: 12px;
+  margin: 0 0 12px;
+  box-sizing: border-box;
 }
 
-/* button */
 .login-card button {
   width: 100%;
-  margin-top: 10px;
-  background-color: #1f3b73;
-  font-weight: bold;
+  box-sizing: border-box;
+  margin-top: 8px;
+}
+
+.login-card button[type="button"] {
+  background: transparent;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.login-card button[type="button"]:hover {
+  background: rgba(78, 89, 140, 0.07);
+  color: var(--color-primary-hover);
+}
+
+/* Navbar search hit list — not primary CTAs */
+button.nav-search-hit {
+  background: transparent !important;
+  color: var(--color-text) !important;
+}
+
+button.nav-search-hit:hover:not(:disabled) {
+  background: rgba(78, 89, 140, 0.08) !important;
+  color: var(--color-text) !important;
+}
+
+button.feed-follow-icon {
+  background: var(--color-accent) !important;
+  color: var(--color-primary) !important;
+}
+
+button.feed-follow-icon:hover:not(:disabled) {
+  background: var(--color-accent-hover) !important;
+  color: var(--color-primary) !important;
+  filter: brightness(1.02);
+}
+
+button.delete-soft-btn:hover:not(:disabled) {
+  background: #fff5f8 !important;
+  color: var(--color-danger) !important;
+  border-color: rgba(156, 61, 82, 0.45) !important;
+}
+
+button.nav-logout-btn {
+  background: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+}
+
+button.nav-logout-btn:hover:not(:disabled) {
+  background: rgba(78, 89, 140, 0.08) !important;
+  color: var(--color-primary-hover) !important;
+}
+
+button.modal-close-btn {
+  background: transparent !important;
+  color: var(--color-text-muted) !important;
+}
+
+button.modal-close-btn:hover:not(:disabled) {
+  background: rgba(78, 89, 140, 0.08) !important;
+  color: var(--color-primary) !important;
+}
+
+button.btn-secondary-outline {
+  background: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  border: 2px solid var(--color-primary) !important;
+}
+
+button.btn-secondary-outline:hover:not(:disabled) {
+  background: rgba(78, 89, 140, 0.08) !important;
+}
+
+button.btn-secondary-muted {
+  background: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  border: 1px solid var(--color-card-border) !important;
+}
+
+button.btn-secondary-muted:hover:not(:disabled) {
+  background: var(--color-card) !important;
 }

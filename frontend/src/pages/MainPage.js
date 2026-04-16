@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers, createUser } from "../features/usersSlice";
 import { fetchSessions, createSession } from "../features/sessionsSlice";
 import { Link } from "react-router-dom";
+import { colors } from "../theme";
 
 function MainPage() {
   const dispatch = useDispatch();
@@ -37,12 +38,14 @@ function MainPage() {
     setDuration("");
   };
 
+  const linkSx = { color: colors.primary, fontWeight: 600, marginRight: "16px" };
+
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Trackademic</h1>
-      <Link to="/feed">Global Feed</Link>
-      <br></br>
-      <Link to="/create">Add Study Session</Link>
+    <div style={{ padding: "28px 20px", maxWidth: "720px", margin: "0 auto", minHeight: "100vh", background: colors.white }}>
+      <h1 style={{ color: colors.primary, fontWeight: 800, letterSpacing: "-0.02em" }}>Trackademic</h1>
+      <p style={{ color: colors.textMuted }}>Dev tools</p>
+      <Link to="/feed" style={linkSx}>Global Feed</Link>
+      <Link to="/create" style={linkSx}>Add Study Session</Link>
       
 
       <h2>Create User</h2>

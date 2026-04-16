@@ -1,6 +1,8 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/authSlice";
+import NavbarUserSearch from "./NavbarUserSearch";
+import { colors, shadows, radius } from "../theme";
 
 function Navbar() {
   const dispatch = useDispatch();
@@ -12,34 +14,65 @@ function Navbar() {
     navigate("/");
   };
 
+  const linkBase = {
+    textDecoration: "none",
+    padding: "9px 16px",
+    borderRadius: radius.pill,
+    fontWeight: 600,
+    fontSize: "14px",
+    transition: "background-color 0.15s ease, color 0.15s ease",
+  };
+
   return (
-    <div style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "12px 28px",
-      margin: "14px auto 0",
-      maxWidth: "1120px",
-      borderRadius: "16px",
-      backgroundColor: "#ffffff",
-      border: "1px solid #eee",
-      boxShadow: "0 6px 16px rgba(0,0,0,0.08)"
-    }}>
-      <h2 style={{ margin: 0, color: "#1f3b73", letterSpacing: "0.3px" }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(120px, auto) minmax(0, 1fr) minmax(220px, auto)",
+        alignItems: "center",
+        gap: "16px",
+        padding: "14px 28px",
+        margin: "16px auto 0",
+        maxWidth: "1180px",
+        borderRadius: radius.lg,
+        backgroundColor: colors.white,
+        border: `1px solid ${colors.cardBorder}`,
+        boxShadow: shadows.nav,
+      }}
+    >
+      <h2
+        style={{
+          margin: 0,
+          color: colors.primary,
+          letterSpacing: "-0.02em",
+          fontWeight: 800,
+          fontSize: "22px",
+          whiteSpace: "nowrap",
+        }}
+      >
         Trackademic
       </h2>
-  
-      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+
+      <div style={{ justifySelf: "center", width: "100%", minWidth: 0, maxWidth: 400 }}>
+        <NavbarUserSearch />
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          alignItems: "center",
+          justifySelf: "end",
+          flexWrap: "wrap",
+          justifyContent: "flex-end",
+        }}
+      >
         <NavLink
           to="/feed"
           style={({ isActive }) => ({
-            textDecoration: "none",
-            padding: "8px 14px",
-            borderRadius: "999px",
-            fontWeight: 600,
-            color: isActive ? "#ffffff" : "#444",
-            backgroundColor: isActive ? "#1f3b73" : "transparent",
-            transition: "all 0.2s ease",
+            ...linkBase,
+            color: isActive ? colors.white : colors.textMuted,
+            backgroundColor: isActive ? colors.primary : "transparent",
+            boxShadow: isActive ? `0 2px 12px ${colors.primaryMuted}` : "none",
           })}
         >
           Feed
@@ -47,13 +80,10 @@ function Navbar() {
         <NavLink
           to="/create"
           style={({ isActive }) => ({
-            textDecoration: "none",
-            padding: "8px 14px",
-            borderRadius: "999px",
-            fontWeight: 600,
-            color: isActive ? "#ffffff" : "#444",
-            backgroundColor: isActive ? "#1f3b73" : "transparent",
-            transition: "all 0.2s ease",
+            ...linkBase,
+            color: isActive ? colors.white : colors.textMuted,
+            backgroundColor: isActive ? colors.primary : "transparent",
+            boxShadow: isActive ? `0 2px 12px ${colors.primaryMuted}` : "none",
           })}
         >
           Record
@@ -61,24 +91,29 @@ function Navbar() {
         <NavLink
           to="/profile"
           style={({ isActive }) => ({
-            textDecoration: "none",
-            padding: "8px 14px",
-            borderRadius: "999px",
-            fontWeight: 600,
-            color: isActive ? "#ffffff" : "#444",
-            backgroundColor: isActive ? "#1f3b73" : "transparent",
-            transition: "all 0.2s ease",
+            ...linkBase,
+            color: isActive ? colors.white : colors.textMuted,
+            backgroundColor: isActive ? colors.primary : "transparent",
+            boxShadow: isActive ? `0 2px 12px ${colors.primaryMuted}` : "none",
           })}
         >
           Profile
         </NavLink>
         <button
+          type="button"
+          className="nav-logout-btn"
           onClick={handleLogout}
           style={{
-            marginLeft: "8px",
-            padding: "8px 14px",
-            borderRadius: "999px",
-            fontWeight: 600
+            marginLeft: "4px",
+            padding: "9px 16px",
+            borderRadius: radius.pill,
+            fontWeight: 600,
+            fontSize: "14px",
+            border: `2px solid ${colors.primary}`,
+            background: colors.white,
+            color: colors.primary,
+            cursor: "pointer",
+            fontFamily: "inherit",
           }}
         >
           Logout

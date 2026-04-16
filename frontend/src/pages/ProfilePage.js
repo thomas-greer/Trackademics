@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import { fetchSessions } from "../features/sessionsSlice";
+import { fetchSessions, deleteSession } from "../features/sessionsSlice";
+import { updateUser } from "../features/authSlice";
 import Navbar from "../components/Navbar";
+import ProfileAnalyticsCharts from "../components/ProfileAnalyticsCharts";
+import UserAvatar from "../components/UserAvatar";
+import { colors, shadows, radius } from "../theme";
 
 const toNumber = (value) => {
   const parsed = Number(value);
@@ -41,6 +45,13 @@ function ProfilePage() {
     users: [],
     loading: false,
   });
+  const [studyAnalytics, setStudyAnalytics] = useState(null);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [editUsername, setEditUsername] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editAvatarFile, setEditAvatarFile] = useState(null);
+  const [editAvatarPreview, setEditAvatarPreview] = useState(null);
+  const [editSaving, setEditSaving] = useState(false);
 
   const viewerId = toNumber(authUser?.id);
   const targetUserId = useMemo(
@@ -53,9 +64,16 @@ function ProfilePage() {
     (isOwnProfile ? authUser?.username : null) ||
     (targetUserId ? `User ${targetUserId}` : "Profile");
 
+  const headerAvatarUrl =
+    profileUser?.avatar_url ||
+    (isOwnProfile ? authUser?.avatar_url : "") ||
+    "";
+
   useEffect(() => {
-    dispatch(fetchSessions());
-  }, [dispatch]);
+    if (targetUserId > 0) {
+      dispatch(fetchSessions({ authorId: targetUserId }));
+    }
+  }, [dispatch, targetUserId]);
 
   useEffect(() => {
     if (!targetUserId) {
@@ -134,6 +152,29 @@ function ProfilePage() {
 
     loadProfile();
   }, [targetUserId, viewerId]);
+
+  useEffect(() => {
+    if (!targetUserId) {
+      setStudyAnalytics(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `http://127.0.0.1:8000/api/users/${targetUserId}/study-analytics/`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data?.last_7_days) setStudyAnalytics(data);
+      } catch {
+        if (!cancelled) setStudyAnalytics(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [targetUserId, sessions.length]);
 
   const handleFollowToggle = async () => {
     if (!viewerId || !targetUserId || isOwnProfile || isUpdatingFollow) return;
@@ -225,9 +266,99 @@ function ProfilePage() {
     });
   };
 
+  const openEditProfile = () => {
+    const u = profileUser?.username || authUser?.username || "";
+    const e = profileUser?.email || authUser?.email || "";
+    setEditUsername(u);
+    setEditEmail(e);
+    setEditAvatarFile(null);
+    if (editAvatarPreview) {
+      URL.revokeObjectURL(editAvatarPreview);
+    }
+    setEditAvatarPreview(null);
+    setEditProfileOpen(true);
+  };
+
+  const closeEditProfile = () => {
+    setEditProfileOpen(false);
+    setEditAvatarFile(null);
+    if (editAvatarPreview) {
+      URL.revokeObjectURL(editAvatarPreview);
+    }
+    setEditAvatarPreview(null);
+  };
+
+  const handleEditAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (editAvatarPreview) {
+      URL.revokeObjectURL(editAvatarPreview);
+    }
+    setEditAvatarFile(file);
+    setEditAvatarPreview(URL.createObjectURL(file));
+  };
+
+  const handleSaveProfile = async () => {
+    if (!viewerId) {
+      alert("You must be logged in to edit your profile.");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append("viewer_id", String(viewerId));
+      fd.append("username", editUsername.trim());
+      fd.append("email", editEmail.trim());
+      if (editAvatarFile) {
+        fd.append("avatar", editAvatarFile);
+      }
+
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/users/${viewerId}/edit-profile/`,
+        { method: "POST", body: fd }
+      );
+
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { error: raw || "Unexpected response from server." };
+      }
+
+      if (!res.ok) {
+        alert(data.error || "Could not save profile.");
+        return;
+      }
+
+      setProfileUser((prev) => ({ ...(prev || {}), ...data }));
+      const merged = { ...(authUser || {}), ...data };
+      dispatch(updateUser(data));
+      localStorage.setItem("user", JSON.stringify(merged));
+      closeEditProfile();
+    } catch (err) {
+      console.error(err);
+      alert("Server error while saving profile.");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const handleConnectionClick = (selectedUserId) => {
     closeConnectionsModal();
     navigate(`/profile/${selectedUserId}`);
+  };
+
+  const handleDeleteSession = async (sessionId) => {
+    if (!viewerId) return;
+    if (!window.confirm("Delete this post? This cannot be undone.")) return;
+    try {
+      await dispatch(
+        deleteSession({ sessionId, userId: viewerId })
+      ).unwrap();
+    } catch (err) {
+      alert(err?.message || "Could not delete post.");
+    }
   };
 
   const userSessions = sessions.filter(
@@ -261,32 +392,37 @@ function ProfilePage() {
     <div>
       <Navbar />
 
-      <div className="container">
+      <div className="container" style={{ paddingBottom: "48px" }}>
 
         {/* PROFILE HEADER */}
-        <div className="card" style={{ textAlign: "center" }}>
-          <div style={{
-            width: "70px",
-            height: "70px",
-            borderRadius: "50%",
-            backgroundColor: "#1f3b73",
-            color: "white",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "24px",
-            margin: "0 auto 10px auto"
-          }}>
-            {profileUser?.username?.[0]?.toUpperCase()}
+        <div className="card" style={{ textAlign: "center", borderTop: `4px solid ${colors.accent}` }}>
+          <div style={{ margin: "0 auto 12px auto", width: "72px", height: "72px" }}>
+            <UserAvatar
+              avatarUrl={headerAvatarUrl}
+              username={displayUsername}
+              size={72}
+              style={{ boxShadow: `0 6px 20px ${colors.primaryMuted}` }}
+            />
           </div>
 
-          <h2>{displayUsername}</h2>
+          <h2 style={{ color: colors.text, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 4px" }}>{displayUsername}</h2>
+
+          {isOwnProfile && viewerId > 0 && (
+            <button
+              type="button"
+              onClick={openEditProfile}
+              style={{ marginTop: "10px" }}
+            >
+              Edit Profile
+            </button>
+          )}
 
           {!isOwnProfile && targetUserId > 0 && (
             <button
+              type="button"
               onClick={handleFollowToggle}
               disabled={isUpdatingFollow}
-              style={{ marginTop: "8px" }}
+              style={{ marginTop: "10px" }}
             >
               {isFollowing ? "Following" : "Follow"}
             </button>
@@ -297,12 +433,12 @@ function ProfilePage() {
             <p style={{ fontWeight: "600" }}>
               Current Streak: {streaks.current} days
             </p>
-            <p style={{ color: "#888", fontSize: "14px" }}>
+            <p style={{ color: colors.textSubtle, fontSize: "14px" }}>
               Best Streak: {streaks.best} days
             </p>
           </div>
 
-          <div style={{ color: "#555", marginTop: "10px", display: "flex", justifyContent: "center", gap: "14px" }}>
+          <div style={{ color: colors.textMuted, marginTop: "10px", display: "flex", justifyContent: "center", gap: "14px" }}>
             <span style={countLink} onClick={() => openConnectionsModal("followers")}>
               Followers: {followCounts.followers}
             </span>
@@ -313,36 +449,56 @@ function ProfilePage() {
           </div>
 
           {/* STATS */}
-          <p style={{ color: "#555", marginTop: "10px" }}>
+          <p style={{ color: colors.textMuted, marginTop: "10px", fontSize: "15px" }}>
             📚 {userSessions.length} sessions • ⏱ {totalMinutes} minutes studied
           </p>
         </div>
 
+        {studyAnalytics && <ProfileAnalyticsCharts analytics={studyAnalytics} />}
+
         {/* USER POSTS */}
-        <h2 style={{ marginTop: "20px" }}>
+        <h2 style={{
+          marginTop: "24px",
+          color: colors.primary,
+          fontWeight: 800,
+          fontSize: "22px",
+          letterSpacing: "-0.02em",
+        }}>
           {isOwnProfile ? "My Activity" : `${displayUsername}'s Activity`}
         </h2>
 
         {userSessions.length === 0 && (
-          <p>No study sessions yet</p>
+          <p style={{ color: colors.textMuted }}>No study sessions yet</p>
         )}
 
         {userSessions.map(session => (
           <div className="card" key={session.id}>
 
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <strong>{displayUsername}</strong>
 
-              <span style={{ color: "gray", fontSize: "12px" }}>
-                {formatTimeAgo(session.created_at)}
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ color: colors.textSubtle, fontSize: "12px" }}>
+                  {formatTimeAgo(session.created_at)}
+                </span>
+                {isOwnProfile && viewerId > 0 && (
+                  <button
+                    type="button"
+                    className="delete-soft-btn"
+                    onClick={() => handleDeleteSession(session.id)}
+                    style={deletePostButton}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             </div>
 
             <p style={{ marginTop: "10px" }}>
               📚 Studied <strong>{session.subject}</strong>
             </p>
 
-            <p style={{ color: "#555" }}>
+            <p style={{ color: colors.textMuted }}>
               ⏱ {session.duration} minutes
             </p>
 
@@ -357,20 +513,72 @@ function ProfilePage() {
 
       </div>
 
+      {editProfileOpen && (
+        <div style={modalOverlay} onClick={closeEditProfile}>
+          <div style={editProfileModalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={modalHeader}>
+              <h3 style={{ margin: 0, color: colors.primary, fontWeight: 800 }}>Edit profile</h3>
+              <button type="button" className="modal-close-btn" onClick={closeEditProfile} style={closeButton}>
+                ×
+              </button>
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+              <UserAvatar
+                avatarUrl={editAvatarPreview || headerAvatarUrl}
+                username={editUsername || displayUsername}
+                size={88}
+                style={{ boxShadow: `0 6px 20px ${colors.primaryMuted}` }}
+              />
+            </div>
+            <label style={editLabel} htmlFor="edit-avatar">Profile picture</label>
+            <input
+              id="edit-avatar"
+              type="file"
+              accept="image/*"
+              onChange={handleEditAvatarChange}
+              style={{ marginBottom: "14px", fontSize: "13px", width: "100%" }}
+            />
+            <label style={editLabel} htmlFor="edit-username">Username</label>
+            <input
+              id="edit-username"
+              value={editUsername}
+              onChange={(e) => setEditUsername(e.target.value)}
+              style={editInput}
+            />
+            <label style={editLabel} htmlFor="edit-email">Email</label>
+            <input
+              id="edit-email"
+              type="email"
+              value={editEmail}
+              onChange={(e) => setEditEmail(e.target.value)}
+              style={editInput}
+            />
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "18px" }}>
+              <button type="button" className="btn-secondary-muted" onClick={closeEditProfile} disabled={editSaving}>
+                Cancel
+              </button>
+              <button type="button" onClick={handleSaveProfile} disabled={editSaving}>
+                {editSaving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {connectionsModal.isOpen && (
         <div style={modalOverlay} onClick={closeConnectionsModal}>
           <div style={modalCard} onClick={(e) => e.stopPropagation()}>
             <div style={modalHeader}>
-              <h3 style={{ margin: 0 }}>
+              <h3 style={{ margin: 0, color: colors.primary, fontWeight: 800 }}>
                 {connectionsModal.type === "followers" ? "Followers" : "Following"}
               </h3>
-              <button onClick={closeConnectionsModal} style={closeButton}>×</button>
+              <button type="button" className="modal-close-btn" onClick={closeConnectionsModal} style={closeButton}>×</button>
             </div>
 
             {connectionsModal.loading ? (
               <p>Loading...</p>
             ) : connectionsModal.users.length === 0 ? (
-              <p style={{ color: "#666" }}>
+              <p style={{ color: colors.textMuted }}>
                 No {connectionsModal.type} yet.
               </p>
             ) : (
@@ -380,7 +588,14 @@ function ProfilePage() {
                   style={connectionRow}
                   onClick={() => handleConnectionClick(connectionUser.id)}
                 >
-                  👤 {connectionUser.username}
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <UserAvatar
+                      avatarUrl={connectionUser.avatar_url}
+                      username={connectionUser.username}
+                      size={32}
+                    />
+                    <span>{connectionUser.username}</span>
+                  </div>
                 </div>
               ))
             )}
@@ -393,14 +608,17 @@ function ProfilePage() {
 
 const countLink = {
   cursor: "pointer",
-  textDecoration: "underline",
-  textUnderlineOffset: "2px",
+  textDecoration: "none",
+  color: colors.primary,
+  fontWeight: 600,
+  borderBottom: `2px solid ${colors.accent}`,
+  paddingBottom: "1px",
 };
 
 const modalOverlay = {
   position: "fixed",
   inset: 0,
-  backgroundColor: "rgba(0, 0, 0, 0.35)",
+  backgroundColor: colors.overlay,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -411,32 +629,71 @@ const modalCard = {
   width: "360px",
   maxHeight: "70vh",
   overflowY: "auto",
-  backgroundColor: "#fff",
-  borderRadius: "14px",
-  padding: "16px",
-  boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+  backgroundColor: colors.white,
+  borderRadius: radius.lg,
+  padding: "20px",
+  boxShadow: shadows.md,
+  border: `1px solid ${colors.cardBorder}`,
+  borderTop: `4px solid ${colors.accent}`,
+};
+
+const editProfileModalCard = {
+  ...modalCard,
+  width: "400px",
+  textAlign: "left",
+};
+
+const editLabel = {
+  display: "block",
+  fontSize: "13px",
+  fontWeight: 600,
+  color: colors.textMuted,
+  marginBottom: "4px",
+};
+
+const editInput = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "10px 12px",
+  marginBottom: "12px",
+  borderRadius: radius.sm,
+  border: `1px solid ${colors.cardBorder}`,
+  fontSize: "14px",
 };
 
 const modalHeader = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  marginBottom: "10px",
+  marginBottom: "12px",
 };
 
 const closeButton = {
   border: "none",
   background: "transparent",
-  fontSize: "20px",
+  fontSize: "22px",
   cursor: "pointer",
-  color: "#555",
+  color: colors.textMuted,
   padding: 0,
+  lineHeight: 1,
 };
 
 const connectionRow = {
-  padding: "10px 8px",
-  borderBottom: "1px solid #f0f0f0",
+  padding: "11px 8px",
+  borderBottom: `1px solid ${colors.borderSubtle}`,
   cursor: "pointer",
+  borderRadius: radius.sm,
+};
+
+const deletePostButton = {
+  padding: "5px 12px",
+  fontSize: "13px",
+  borderRadius: radius.sm,
+  border: `1px solid ${colors.border}`,
+  background: colors.white,
+  color: colors.danger,
+  cursor: "pointer",
+  fontWeight: 600,
 };
 
 export default ProfilePage;
