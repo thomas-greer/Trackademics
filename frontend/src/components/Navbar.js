@@ -17,6 +17,7 @@ function Navbar() {
     if (raw && raw !== "undefined") user = JSON.parse(raw);
   }
   const userId = user?.id;
+  const isAdmin = user?.username === "admin" && user?.email === "admin@gmail.com";
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifData, setNotifData] = useState({ unread_count: 0, notifications: [] });
 
@@ -157,28 +158,32 @@ function Navbar() {
         >
           Feed
         </NavLink>
-        <NavLink
-          to="/create"
-          style={({ isActive }) => ({
-            ...linkBase,
-            color: isActive ? colors.white : colors.textMuted,
-            backgroundColor: isActive ? colors.primary : "transparent",
-            boxShadow: isActive ? `0 2px 12px ${colors.primaryMuted}` : "none",
-          })}
-        >
-          Record
-        </NavLink>
-        <NavLink
-          to="/messages"
-          style={({ isActive }) => ({
-            ...linkBase,
-            color: isActive ? colors.white : colors.textMuted,
-            backgroundColor: isActive ? colors.primary : "transparent",
-            boxShadow: isActive ? `0 2px 12px ${colors.primaryMuted}` : "none",
-          })}
-        >
-          Study Groups
-        </NavLink>
+        {!isAdmin && (
+          <NavLink
+            to="/create"
+            style={({ isActive }) => ({
+              ...linkBase,
+              color: isActive ? colors.white : colors.textMuted,
+              backgroundColor: isActive ? colors.primary : "transparent",
+              boxShadow: isActive ? `0 2px 12px ${colors.primaryMuted}` : "none",
+            })}
+          >
+            Record
+          </NavLink>
+        )}
+        {!isAdmin && (
+          <NavLink
+            to="/messages"
+            style={({ isActive }) => ({
+              ...linkBase,
+              color: isActive ? colors.white : colors.textMuted,
+              backgroundColor: isActive ? colors.primary : "transparent",
+              boxShadow: isActive ? `0 2px 12px ${colors.primaryMuted}` : "none",
+            })}
+          >
+            Study Groups
+          </NavLink>
+        )}
         <NavLink
           to="/profile"
           style={({ isActive }) => ({
@@ -190,6 +195,19 @@ function Navbar() {
         >
           Profile
         </NavLink>
+        {isAdmin && (
+          <NavLink
+            to="/admin"
+            style={({ isActive }) => ({
+              ...linkBase,
+              color: isActive ? colors.white : colors.textMuted,
+              backgroundColor: isActive ? colors.primary : "transparent",
+              boxShadow: isActive ? `0 2px 12px ${colors.primaryMuted}` : "none",
+            })}
+          >
+            Admin
+          </NavLink>
+        )}
         <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
           <button
             type="button"

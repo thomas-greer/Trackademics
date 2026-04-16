@@ -17,6 +17,8 @@ from .views import (
     session_like,
     notifications_list,
     notifications_mark_read,
+    admin_users_overview,
+    admin_user_manage,
 )
 
 urlpatterns = [
@@ -37,4 +39,6 @@ urlpatterns = [
     path('messages/conversations/<int:conversation_id>/messages/', messaging_conversation_messages),
     path('notifications/', notifications_list),
     path('notifications/mark-read/', notifications_mark_read),
+    path('admin/users-overview/', admin_users_overview),
+    path('admin/users/<int:target_user_id>/', admin_user_manage),
 ]

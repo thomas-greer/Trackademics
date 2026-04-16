@@ -204,14 +204,16 @@ button.nav-search-hit:hover:not(:disabled) {
 }
 
 button.feed-follow-icon {
-  background: var(--color-accent) !important;
-  color: var(--color-primary) !important;
+  background: transparent !important;
+  color: var(--color-accent) !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 button.feed-follow-icon:hover:not(:disabled) {
-  background: var(--color-accent-hover) !important;
-  color: var(--color-primary) !important;
-  filter: brightness(1.02);
+  background: transparent !important;
+  color: var(--color-accent-hover) !important;
+  filter: none;
 }
 
 button.delete-soft-btn:hover:not(:disabled) {

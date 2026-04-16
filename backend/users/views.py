@@ -9,7 +9,7 @@ from django.db import DatabaseError, IntegrityError, transaction
 from django.db.utils import OperationalError, ProgrammingError
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db.models import IntegerField, Prefetch, Q, Sum, Value
+from django.db.models import Count, IntegerField, Prefetch, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from .models import (
     Comment,
@@ -160,6 +160,10 @@ def _create_notification(recipient, actor, notif_type, text, **kwargs):
     )
 
 
+def _is_admin_user(user):
+    return bool(user and user.username == "admin" and user.email == "admin@gmail.com")
+
+
 @api_view(['GET', 'POST'])
 def get_users(request):
     if request.method == 'GET':
@@ -177,6 +181,10 @@ def get_users(request):
                 viewer = None
             else:
                 viewer = User.objects.filter(id=vid).first()
+
+        # Hide the admin account from normal users in discovery/search lists.
+        if not _is_admin_user(viewer):
+            users = users.exclude(username="admin", email="admin@gmail.com")
 
         data = [
             _serialize_user(request, u, viewer=viewer)
@@ -548,6 +556,10 @@ def user_profile(request, user_id):
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Keep admin account hidden from non-admin users.
+    if user.username == "admin" and user.email == "admin@gmail.com" and not _is_admin_user(viewer):
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
     return Response(_serialize_user(request, user, viewer=viewer))
@@ -1061,3 +1073,83 @@ def notifications_mark_read(request):
         qs = qs.filter(id=notif_id)
     qs.update(is_read=True)
     return Response({"ok": True})
+
+
+@api_view(["GET"])
+def admin_users_overview(request):
+    viewer_raw = request.query_params.get("viewer_id")
+    if not viewer_raw:
+        return Response({"error": "viewer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        viewer_id = int(viewer_raw)
+    except (TypeError, ValueError):
+        return Response({"error": "viewer_id must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+    viewer = User.objects.filter(id=viewer_id).first()
+    if not _is_admin_user(viewer):
+        return Response({"error": "Admin access denied"}, status=status.HTTP_403_FORBIDDEN)
+
+    users = (
+        User.objects.all()
+        .annotate(post_count=Count("posts"))
+        .order_by("username")
+    )
+    payload = [
+        {
+            "id": u.id,
+            "username": u.username,
+            "email": u.email,
+            "post_count": int(u.post_count or 0),
+        }
+        for u in users
+    ]
+    return Response(payload)
+
+
+@api_view(["PATCH", "DELETE"])
+def admin_user_manage(request, target_user_id):
+    viewer_raw = request.data.get("viewer_id") or request.query_params.get("viewer_id")
+    if not viewer_raw:
+        return Response({"error": "viewer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        viewer_id = int(viewer_raw)
+    except (TypeError, ValueError):
+        return Response({"error": "viewer_id must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+    viewer = User.objects.filter(id=viewer_id).first()
+    if not _is_admin_user(viewer):
+        return Response({"error": "Admin access denied"}, status=status.HTTP_403_FORBIDDEN)
+
+    target = User.objects.filter(id=target_user_id).first()
+    if not target:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "DELETE":
+        if target.id == viewer.id:
+            return Response({"error": "Admin account cannot delete itself"}, status=status.HTTP_400_BAD_REQUEST)
+        target.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    new_username = (request.data.get("username") or target.username).strip()
+    new_email = (request.data.get("email") or target.email).strip()
+    if not new_username or not new_email:
+        return Response({"error": "username and email are required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        validate_email(new_email)
+    except ValidationError:
+        return Response({"error": "Invalid email address"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if User.objects.exclude(id=target.id).filter(username=new_username).exists():
+        return Response({"error": "Username already exists"}, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.exclude(id=target.id).filter(email__iexact=new_email).exists():
+        return Response({"error": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST)
+
+    target.username = new_username
+    target.email = new_email
+    target.save(update_fields=["username", "email"])
+    return Response(
+        {
+            "id": target.id,
+            "username": target.username,
+            "email": target.email,
+            "post_count": Post.objects.filter(user=target).count(),
+        }
+    )

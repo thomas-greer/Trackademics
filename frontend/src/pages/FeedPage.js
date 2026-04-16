@@ -542,20 +542,19 @@ const suggestedUserRow = {
 };
 
 const followIconButton = {
-  width: "28px",
-  height: "28px",
-  borderRadius: "50%",
+  minWidth: "16px",
+  height: "20px",
   padding: 0,
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: "18px",
+  fontSize: "20px",
   lineHeight: 1,
-  background: colors.accent,
-  color: colors.primary,
-  border: `1px solid ${colors.accentHover}`,
+  background: "transparent",
+  color: colors.accent,
+  border: "none",
   fontWeight: 700,
-  boxShadow: `0 2px 6px ${colors.primaryMuted}`,
+  boxShadow: "none",
 };
 
 const inputStyle = {
