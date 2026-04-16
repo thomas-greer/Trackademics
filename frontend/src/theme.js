@@ -2,31 +2,31 @@
  * Trackademic design tokens — palette: #4E598C, #F9C784, #FFFFFF
  */
 export const colors = {
-  primary: "#4E598C",
-  primaryHover: "#3f486f",
-  primarySoft: "#7C88B8",
-  chartTertiary: "#A8B0CC",
-  primaryMuted: "rgba(78, 89, 140, 0.14)",
-  accent: "#F9C784",
-  accentHover: "#f5b85a",
-  accentMuted: "rgba(249, 199, 132, 0.45)",
-  white: "#FFFFFF",
-  card: "#EDEFF5",
-  cardBorder: "#DDE2EE",
-  border: "#D0D6E6",
-  borderSubtle: "#E6E9F2",
-  text: "#1a1f2e",
-  textMuted: "#5a6178",
-  textSubtle: "#8b92a5",
-  danger: "#9c3d52",
-  dangerBg: "#FFF8F9",
-  overlay: "rgba(26, 31, 46, 0.48)",
+  primary: "var(--color-primary)",
+  primaryHover: "var(--color-primary-hover)",
+  primarySoft: "var(--color-primary-soft)",
+  chartTertiary: "var(--color-chart-tertiary)",
+  primaryMuted: "var(--color-primary-muted)",
+  accent: "var(--color-accent)",
+  accentHover: "var(--color-accent-hover)",
+  accentMuted: "var(--color-accent-muted)",
+  white: "var(--color-white)",
+  card: "var(--color-card)",
+  cardBorder: "var(--color-card-border)",
+  border: "var(--color-border)",
+  borderSubtle: "var(--color-border-subtle)",
+  text: "var(--color-text)",
+  textMuted: "var(--color-text-muted)",
+  textSubtle: "var(--color-text-subtle)",
+  danger: "var(--color-danger)",
+  dangerBg: "var(--color-danger-bg)",
+  overlay: "var(--color-overlay)",
 };
 
 export const shadows = {
-  sm: "0 2px 14px rgba(78, 89, 140, 0.08)",
-  md: "0 10px 36px rgba(78, 89, 140, 0.12)",
-  nav: "0 8px 32px rgba(78, 89, 140, 0.1)",
+  sm: "var(--shadow-sm)",
+  md: "var(--shadow-md)",
+  nav: "var(--shadow-nav)",
 };
 
 export const radius = {

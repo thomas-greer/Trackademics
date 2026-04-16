@@ -56,6 +56,8 @@ function ProfilePage() {
   const [editAvatarPreview, setEditAvatarPreview] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const [unfollowingUserId, setUnfollowingUserId] = useState(null);
+  const [showInsights, setShowInsights] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
 
   const viewerId = toNumber(authUser?.id);
   const targetUserId = useMemo(
@@ -426,6 +428,19 @@ function ProfilePage() {
     0
   );
 
+  const achievements = [
+    { id: "first-post", icon: "📝", label: "Posted your first study session", achieved: userSessions.length >= 1 },
+    { id: "ten-posts", icon: "📚", label: "Posted 10 study sessions", achieved: userSessions.length >= 10 },
+    { id: "fifty-posts", icon: "🏅", label: "Posted 50 study sessions", achieved: userSessions.length >= 50 },
+    { id: "streak-10", icon: "🔥", label: "Reached a 10 day streak", achieved: streaks.best >= 10 },
+    { id: "streak-50", icon: "🚀", label: "Reached a 50 day streak", achieved: streaks.best >= 50 },
+    { id: "streak-100", icon: "🏆", label: "Reached a 100 day streak", achieved: streaks.best >= 100 },
+    { id: "first-follower", icon: "👥", label: "Got your first follower", achieved: followCounts.followers >= 1 },
+    { id: "follow-10", icon: "🤝", label: "Followed 10 students", achieved: followCounts.following >= 10 },
+    { id: "follow-50", icon: "🌟", label: "Followed 50 students", achieved: followCounts.following >= 50 },
+    { id: "minutes-1000", icon: "⏱️", label: "Studied 1,000 total minutes", achieved: totalMinutes >= 1000 },
+  ];
+
   // timestamp formatter
   const formatTimeAgo = (timestamp) => {
     if (!timestamp) return "just now";
@@ -517,7 +532,51 @@ function ProfilePage() {
           )}
         </div>
 
-        {studyAnalytics && <ProfileAnalyticsCharts analytics={studyAnalytics} />}
+        <div className="card" style={collapsibleCard}>
+          <button
+            type="button"
+            onClick={() => setShowInsights((prev) => !prev)}
+            style={collapsibleHeaderBtn}
+          >
+            <span style={collapsibleTitle}>Study Insights</span>
+            <span style={collapsibleChevron}>{showInsights ? "▾" : "▸"}</span>
+          </button>
+          {showInsights && (
+            <div style={{ marginTop: "12px" }}>
+              {studyAnalytics ? (
+                <ProfileAnalyticsCharts analytics={studyAnalytics} showHeader={false} />
+              ) : (
+                <p style={{ color: colors.textMuted, margin: 0 }}>
+                  Insights are not available yet.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="card" style={collapsibleCard}>
+          <button
+            type="button"
+            onClick={() => setShowAchievements((prev) => !prev)}
+            style={collapsibleHeaderBtn}
+          >
+            <span style={collapsibleTitle}>Achievements</span>
+            <span style={collapsibleChevron}>{showAchievements ? "▾" : "▸"}</span>
+          </button>
+          {showAchievements && (
+            <div style={achievementsGrid}>
+              {achievements.map((achievement) => (
+                <div
+                  key={achievement.id}
+                  style={achievement.achieved ? achievementBadgeActive : achievementBadgeLocked}
+                >
+                  <div style={achievementIcon}>{achievement.icon}</div>
+                  <p style={achievementLabel}>{achievement.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* USER POSTS */}
         <h2 style={{
@@ -877,6 +936,77 @@ const headerActionButton = {
   padding: "7px 12px",
   fontSize: "13px",
   borderRadius: radius.sm,
+};
+
+const collapsibleCard = {
+  marginTop: "20px",
+  borderTop: `4px solid ${colors.accent}`,
+};
+
+const collapsibleHeaderBtn = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  background: "transparent",
+  color: colors.primary,
+  border: "none",
+  padding: 0,
+  cursor: "pointer",
+};
+
+const collapsibleTitle = {
+  fontSize: "22px",
+  fontWeight: 800,
+  letterSpacing: "-0.02em",
+};
+
+const collapsibleChevron = {
+  fontSize: "24px",
+  lineHeight: 1,
+  color: colors.textMuted,
+  fontWeight: 700,
+};
+
+const achievementsGrid = {
+  marginTop: "14px",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+  gap: "10px",
+};
+
+const achievementBadgeBase = {
+  borderRadius: radius.md,
+  padding: "12px",
+  border: `1px solid ${colors.borderSubtle}`,
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+};
+
+const achievementBadgeActive = {
+  ...achievementBadgeBase,
+  background: `linear-gradient(145deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
+  color: colors.primary,
+  border: `1px solid ${colors.accentHover}`,
+};
+
+const achievementBadgeLocked = {
+  ...achievementBadgeBase,
+  background: colors.card,
+  color: colors.textMuted,
+};
+
+const achievementIcon = {
+  fontSize: "22px",
+  lineHeight: 1,
+};
+
+const achievementLabel = {
+  margin: 0,
+  fontSize: "13px",
+  fontWeight: 600,
+  lineHeight: 1.4,
 };
 
 const deletePostButton = {

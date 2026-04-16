@@ -364,9 +364,22 @@ function FeedPage() {
                 </span>
 
                 <span onClick={() => toggleCommentBox(session.id)} style={clickable}>
-                  💬 Comment
+                  💬 {showCommentBox[session.id] ? "Hide Comment Box" : "Add Comment"}
                 </span>
               </div>
+
+              {(comments[session.id] || []).length > 0 && (
+                <div style={{ marginTop: "10px" }}>
+                  {(comments[session.id] || []).map((c) => (
+                    <div key={c.id} style={{ marginTop: "8px", display: "flex", gap: "8px", alignItems: "flex-start" }}>
+                      <UserAvatar avatarUrl={c.user_avatar} username={c.user} size={28} />
+                      <p style={{ margin: 0, flex: 1 }}>
+                        <strong>{c.user}:</strong> {c.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {showCommentBox[session.id] && (
                 <div style={{ marginTop: "10px" }}>
@@ -385,15 +398,6 @@ function FeedPage() {
                   <button type="button" onClick={() => handleComment(session.id)} style={buttonStyle}>
                     Post
                   </button>
-
-                  {(comments[session.id] || []).map((c) => (
-                    <div key={c.id} style={{ marginTop: "8px", display: "flex", gap: "8px", alignItems: "flex-start" }}>
-                      <UserAvatar avatarUrl={c.user_avatar} username={c.user} size={28} />
-                      <p style={{ margin: 0, flex: 1 }}>
-                        <strong>{c.user}:</strong> {c.content}
-                      </p>
-                    </div>
-                  ))}
                 </div>
               )}
 

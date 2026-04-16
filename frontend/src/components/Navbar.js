@@ -2,11 +2,13 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/authSlice";
 import NavbarUserSearch from "./NavbarUserSearch";
+import { useTheme } from "./ThemeProvider";
 import { colors, shadows, radius } from "../theme";
 
 function Navbar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = () => {
     dispatch(logout());
@@ -99,6 +101,24 @@ function Navbar() {
         >
           Profile
         </NavLink>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          style={{
+            padding: "9px 14px",
+            borderRadius: radius.pill,
+            fontWeight: 600,
+            fontSize: "13px",
+            border: `1px solid ${colors.cardBorder}`,
+            background: colors.card,
+            color: colors.text,
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+          title="Toggle dark mode"
+        >
+          {theme === "dark" ? "Light mode" : "Dark mode"}
+        </button>
         <button
           type="button"
           className="nav-logout-btn"

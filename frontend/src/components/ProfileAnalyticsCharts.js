@@ -22,7 +22,7 @@ function fmtShort(iso) {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function ProfileAnalyticsCharts({ analytics }) {
+function ProfileAnalyticsCharts({ analytics, showHeader = true }) {
   if (!analytics?.last_7_days) return null;
 
   const {
@@ -58,12 +58,16 @@ function ProfileAnalyticsCharts({ analytics }) {
 
   return (
     <div style={sectionWrap}>
-      <h2 style={sectionTitle}>Study insights</h2>
-      <p style={sectionSubtitle}>
-        This week: {fmtShort(week_range_this?.start)}–
-        {fmtShort(week_range_this?.end)}. Last week: {fmtShort(week_range_last?.start)}–
-        {fmtShort(week_range_last?.end)}.
-      </p>
+      {showHeader && (
+        <>
+          <h2 style={sectionTitle}>Study insights</h2>
+          <p style={sectionSubtitle}>
+            This week: {fmtShort(week_range_this?.start)}–
+            {fmtShort(week_range_this?.end)}. Last week: {fmtShort(week_range_last?.start)}–
+            {fmtShort(week_range_last?.end)}.
+          </p>
+        </>
+      )}
 
       <div style={insightsGrid}>
         <div style={{ ...card, ...sessionsTrendCard }}>

@@ -3,20 +3,55 @@
 :root {
   --color-primary: #4e598c;
   --color-primary-hover: #3f486f;
+  --color-primary-soft: #7c88b8;
+  --color-chart-tertiary: #a8b0cc;
+  --color-primary-muted: rgba(78, 89, 140, 0.14);
   --color-accent: #f9c784;
   --color-accent-hover: #f5b85a;
-  --color-accent-hover: #f5b85a;
+  --color-accent-muted: rgba(249, 199, 132, 0.45);
+  --color-white: #ffffff;
   --color-bg: #ffffff;
   --color-card: #edeff5;
   --color-card-border: #dde2ee;
+  --color-border: #d0d6e6;
+  --color-border-subtle: #e6e9f2;
   --color-text: #1a1f2e;
   --color-text-muted: #5a6178;
   --color-text-subtle: #8b92a5;
   --color-danger: #9c3d52;
+  --color-danger-bg: #fff8f9;
+  --color-overlay: rgba(26, 31, 46, 0.48);
   --shadow-sm: 0 2px 14px rgba(78, 89, 140, 0.08);
   --shadow-md: 0 10px 36px rgba(78, 89, 140, 0.12);
+  --shadow-nav: 0 8px 32px rgba(78, 89, 140, 0.1);
   --radius: 16px;
   --radius-input: 10px;
+}
+
+:root[data-theme="dark"] {
+  --color-primary: #b8c3ff;
+  --color-primary-hover: #d2d9ff;
+  --color-primary-soft: #7f8bc7;
+  --color-chart-tertiary: #6673aa;
+  --color-primary-muted: rgba(184, 195, 255, 0.18);
+  --color-accent: #f4c56b;
+  --color-accent-hover: #f8d586;
+  --color-accent-muted: rgba(244, 197, 107, 0.3);
+  --color-white: #141922;
+  --color-bg: #0d1117;
+  --color-card: #171d27;
+  --color-card-border: #2b3444;
+  --color-border: #374152;
+  --color-border-subtle: #242d3b;
+  --color-text: #eef2ff;
+  --color-text-muted: #b3bdd3;
+  --color-text-subtle: #8c97b1;
+  --color-danger: #ff8ea1;
+  --color-danger-bg: #2a161d;
+  --color-overlay: rgba(4, 8, 16, 0.7);
+  --shadow-sm: 0 10px 22px rgba(0, 0, 0, 0.22);
+  --shadow-md: 0 20px 44px rgba(0, 0, 0, 0.34);
+  --shadow-nav: 0 14px 34px rgba(0, 0, 0, 0.28);
 }
 
 * {
@@ -29,6 +64,7 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* center content */
@@ -179,7 +215,7 @@ button.feed-follow-icon:hover:not(:disabled) {
 }
 
 button.delete-soft-btn:hover:not(:disabled) {
-  background: #fff5f8 !important;
+  background: var(--color-danger-bg) !important;
   color: var(--color-danger) !important;
   border-color: rgba(156, 61, 82, 0.45) !important;
 }
