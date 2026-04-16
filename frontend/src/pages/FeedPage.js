@@ -5,6 +5,7 @@ import { fetchSessions, deleteSession } from "../features/sessionsSlice";
 import Navbar from "../components/Navbar";
 import FeedCommunityStats from "../components/FeedCommunityStats";
 import UserAvatar from "../components/UserAvatar";
+import { getSchoolAbbreviation } from "../constants/schools";
 import { colors, shadows, radius } from "../theme";
 
 const toNumber = (value) => {
@@ -91,7 +92,16 @@ function FeedPage() {
     new Map(sessions.map(s => [s.id, s])).values()
   );
 
-  const suggestedUsers = users.filter((u) => u.username !== user?.username).slice(0, 5);
+  const currentSchool = (user?.school || "").trim().toLowerCase();
+  const suggestedUsers = users
+    .filter((u) => u.username !== user?.username)
+    .sort((a, b) => {
+      const aSame = currentSchool && (a.school || "").trim().toLowerCase() === currentSchool ? 1 : 0;
+      const bSame = currentSchool && (b.school || "").trim().toLowerCase() === currentSchool ? 1 : 0;
+      if (aSame !== bSame) return bSame - aSame;
+      return (a.username || "").localeCompare(b.username || "");
+    })
+    .slice(0, 5);
 
   const handleLike = (id) => {
     setLikes(prev => ({
@@ -275,6 +285,7 @@ function FeedPage() {
                     >
                       <UserAvatar avatarUrl={u.avatar_url} username={u.username} size={28} />
                       {u.username}
+                      {u.school ? ` - ${getSchoolAbbreviation(u.school)}` : ""}
                     </span>
                     {!u.is_following && (
                       <button
@@ -404,6 +415,7 @@ function FeedPage() {
                   >
                     <UserAvatar avatarUrl={u.avatar_url} username={u.username} size={28} />
                     {u.username}
+                    {u.school ? ` - ${getSchoolAbbreviation(u.school)}` : ""}
                   </span>
                   {!u.is_following && (
                     <button

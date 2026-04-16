@@ -5,6 +5,7 @@ import { fetchSessions, deleteSession } from "../features/sessionsSlice";
 import { updateUser } from "../features/authSlice";
 import Navbar from "../components/Navbar";
 import ProfileAnalyticsCharts from "../components/ProfileAnalyticsCharts";
+import SchoolSelect from "../components/SchoolSelect";
 import UserAvatar from "../components/UserAvatar";
 import { colors, shadows, radius } from "../theme";
 
@@ -49,9 +50,12 @@ function ProfilePage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [editUsername, setEditUsername] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editBio, setEditBio] = useState("");
+  const [editSchool, setEditSchool] = useState("");
   const [editAvatarFile, setEditAvatarFile] = useState(null);
   const [editAvatarPreview, setEditAvatarPreview] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [unfollowingUserId, setUnfollowingUserId] = useState(null);
 
   const viewerId = toNumber(authUser?.id);
   const targetUserId = useMemo(
@@ -269,8 +273,12 @@ function ProfilePage() {
   const openEditProfile = () => {
     const u = profileUser?.username || authUser?.username || "";
     const e = profileUser?.email || authUser?.email || "";
+    const b = profileUser?.bio || authUser?.bio || "";
+    const s = profileUser?.school || authUser?.school || "";
     setEditUsername(u);
     setEditEmail(e);
+    setEditBio(b);
+    setEditSchool(s);
     setEditAvatarFile(null);
     if (editAvatarPreview) {
       URL.revokeObjectURL(editAvatarPreview);
@@ -309,6 +317,8 @@ function ProfilePage() {
       fd.append("viewer_id", String(viewerId));
       fd.append("username", editUsername.trim());
       fd.append("email", editEmail.trim());
+      fd.append("bio", editBio.trim());
+      fd.append("school", editSchool.trim());
       if (editAvatarFile) {
         fd.append("avatar", editAvatarFile);
       }
@@ -347,6 +357,50 @@ function ProfilePage() {
   const handleConnectionClick = (selectedUserId) => {
     closeConnectionsModal();
     navigate(`/profile/${selectedUserId}`);
+  };
+
+  const handleUnfollowFromModal = async (followedUserId) => {
+    if (!viewerId || !isOwnProfile || connectionsModal.type !== "following") return;
+    if (unfollowingUserId === followedUserId) return;
+
+    setUnfollowingUserId(followedUserId);
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/users/${followedUserId}/follow/`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ follower_id: viewerId }),
+        }
+      );
+
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { error: raw || "Unexpected response format from server." };
+      }
+
+      if (!res.ok) {
+        alert(data.error || "Could not unfollow user.");
+        return;
+      }
+
+      setConnectionsModal((prev) => ({
+        ...prev,
+        users: prev.users.filter((u) => toNumber(u.id) !== toNumber(followedUserId)),
+      }));
+      setFollowCounts((prev) => ({
+        ...prev,
+        following: Math.max(0, toNumber(prev.following) - 1),
+      }));
+    } catch (error) {
+      console.error(error);
+      alert("Server error while unfollowing.");
+    } finally {
+      setUnfollowingUserId(null);
+    }
   };
 
   const handleDeleteSession = async (sessionId) => {
@@ -406,36 +460,24 @@ function ProfilePage() {
           </div>
 
           <h2 style={{ color: colors.text, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 4px" }}>{displayUsername}</h2>
-
-          {isOwnProfile && viewerId > 0 && (
-            <button
-              type="button"
-              onClick={openEditProfile}
-              style={{ marginTop: "10px" }}
-            >
-              Edit Profile
-            </button>
+          {!!profileUser?.school && (
+            <p style={schoolText}>{profileUser.school}</p>
+          )}
+          {!!profileUser?.bio && (
+            <p style={bioText}>{profileUser.bio}</p>
           )}
 
-          {!isOwnProfile && targetUserId > 0 && (
-            <button
-              type="button"
-              onClick={handleFollowToggle}
-              disabled={isUpdatingFollow}
-              style={{ marginTop: "10px" }}
-            >
-              {isFollowing ? "Following" : "Follow"}
-            </button>
-          )}
-
-          {/* 🔥 STREAKS */}
-          <div style={{ marginTop: "10px" }}>
-            <p style={{ fontWeight: "600" }}>
-              Current Streak: {streaks.current} days
-            </p>
-            <p style={{ color: colors.textSubtle, fontSize: "14px" }}>
-              Best Streak: {streaks.best} days
-            </p>
+          <div style={streakCardsWrap}>
+            <div style={streakCard}>
+              <p style={streakLabel}>Current Streak</p>
+              <p style={streakValue}>{streaks.current}</p>
+              <p style={streakUnit}>days</p>
+            </div>
+            <div style={streakCardSecondary}>
+              <p style={streakLabel}>Best Streak</p>
+              <p style={streakValue}>{streaks.best}</p>
+              <p style={streakUnit}>days</p>
+            </div>
           </div>
 
           <div style={{ color: colors.textMuted, marginTop: "10px", display: "flex", justifyContent: "center", gap: "14px" }}>
@@ -452,6 +494,27 @@ function ProfilePage() {
           <p style={{ color: colors.textMuted, marginTop: "10px", fontSize: "15px" }}>
             📚 {userSessions.length} sessions • ⏱ {totalMinutes} minutes studied
           </p>
+
+          {isOwnProfile && viewerId > 0 && (
+            <button
+              type="button"
+              onClick={openEditProfile}
+              style={headerActionButton}
+            >
+              Edit Profile
+            </button>
+          )}
+
+          {!isOwnProfile && targetUserId > 0 && (
+            <button
+              type="button"
+              onClick={handleFollowToggle}
+              disabled={isUpdatingFollow}
+              style={headerActionButton}
+            >
+              {isFollowing ? "Following" : "Follow"}
+            </button>
+          )}
         </div>
 
         {studyAnalytics && <ProfileAnalyticsCharts analytics={studyAnalytics} />}
@@ -553,6 +616,23 @@ function ProfilePage() {
               onChange={(e) => setEditEmail(e.target.value)}
               style={editInput}
             />
+            <label style={editLabel} htmlFor="edit-school">School</label>
+            <SchoolSelect
+              id="edit-school"
+              value={editSchool}
+              onChange={setEditSchool}
+              placeholder="Search and select your school"
+            />
+            <label style={editLabel} htmlFor="edit-bio">Bio</label>
+            <textarea
+              id="edit-bio"
+              value={editBio}
+              onChange={(e) => setEditBio(e.target.value)}
+              rows={3}
+              maxLength={220}
+              placeholder="Tell people a little about yourself..."
+              style={editTextArea}
+            />
             <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "18px" }}>
               <button type="button" className="btn-secondary-muted" onClick={closeEditProfile} disabled={editSaving}>
                 Cancel
@@ -588,7 +668,7 @@ function ProfilePage() {
                   style={connectionRow}
                   onClick={() => handleConnectionClick(connectionUser.id)}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={connectionRowContent}>
                     <UserAvatar
                       avatarUrl={connectionUser.avatar_url}
                       username={connectionUser.username}
@@ -596,6 +676,20 @@ function ProfilePage() {
                     />
                     <span>{connectionUser.username}</span>
                   </div>
+                  {isOwnProfile && connectionsModal.type === "following" && (
+                    <button
+                      type="button"
+                      style={unfollowButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUnfollowFromModal(connectionUser.id);
+                      }}
+                      disabled={unfollowingUserId === connectionUser.id}
+                      title="Unfollow"
+                    >
+                      {unfollowingUserId === connectionUser.id ? "..." : "×"}
+                    </button>
+                  )}
                 </div>
               ))
             )}
@@ -661,6 +755,13 @@ const editInput = {
   fontSize: "14px",
 };
 
+const editTextArea = {
+  ...editInput,
+  minHeight: "78px",
+  resize: "vertical",
+  fontFamily: "inherit",
+};
+
 const modalHeader = {
   display: "flex",
   justifyContent: "space-between",
@@ -682,6 +783,99 @@ const connectionRow = {
   padding: "11px 8px",
   borderBottom: `1px solid ${colors.borderSubtle}`,
   cursor: "pointer",
+  borderRadius: radius.sm,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "8px",
+};
+
+const connectionRowContent = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  minWidth: 0,
+};
+
+const unfollowButton = {
+  border: `1px solid ${colors.border}`,
+  background: colors.white,
+  color: colors.danger,
+  borderRadius: radius.pill,
+  width: "26px",
+  height: "26px",
+  padding: 0,
+  lineHeight: 1,
+  fontSize: "16px",
+  cursor: "pointer",
+  fontWeight: 700,
+  flexShrink: 0,
+};
+
+const streakCardsWrap = {
+  marginTop: "20px",
+  marginBottom: "18px",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(135px, 1fr))",
+  gap: "9px",
+};
+
+const streakCard = {
+  borderRadius: radius.md,
+  padding: "10px 9px",
+  background: `linear-gradient(145deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
+  color: colors.primary,
+  border: `1px solid ${colors.accentHover}`,
+  boxShadow: `0 4px 14px ${colors.primaryMuted}`,
+  textAlign: "center",
+};
+
+const streakCardSecondary = {
+  ...streakCard,
+};
+
+const streakLabel = {
+  margin: 0,
+  fontSize: "12px",
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+};
+
+const streakValue = {
+  margin: "6px 0 2px",
+  fontSize: "30px",
+  lineHeight: 1,
+  fontWeight: 800,
+};
+
+const streakUnit = {
+  margin: 0,
+  fontSize: "13px",
+  fontWeight: 600,
+};
+
+const bioText = {
+  margin: "10px auto 2px",
+  maxWidth: "520px",
+  color: colors.textMuted,
+  fontSize: "14px",
+  lineHeight: 1.45,
+};
+
+const schoolText = {
+  margin: "6px auto 0",
+  maxWidth: "520px",
+  color: colors.text,
+  fontSize: "14px",
+  lineHeight: 1.4,
+  fontWeight: 700,
+};
+
+const headerActionButton = {
+  marginTop: "16px",
+  padding: "7px 12px",
+  fontSize: "13px",
   borderRadius: radius.sm,
 };
 

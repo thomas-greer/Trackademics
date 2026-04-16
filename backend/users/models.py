@@ -54,6 +54,8 @@ class UserStats(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     avatar = models.ImageField(upload_to="avatars/", blank=True)
+    bio = models.TextField(blank=True, default="")
+    school = models.CharField(max_length=120, blank=True, default="")
 
     def __str__(self):
         return f"Profile for {self.user.username}"

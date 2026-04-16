@@ -90,10 +90,16 @@ def _serialize_user(request, user, viewer=None):
             following=user
         ).exists()
 
+    profile_row = UserProfile.objects.filter(user_id=user.id).only("bio", "school").first()
+    bio = (profile_row.bio or "").strip() if profile_row else ""
+    school = (profile_row.school or "").strip() if profile_row else ""
+
     return {
         "id": user.id,
         "username": user.username,
         "email": user.email,
+        "bio": bio,
+        "school": school,
         "avatar_url": _avatar_url(request, user),
         "stats": {
             "current_streak": stats.current_streak,
@@ -160,10 +166,11 @@ def get_users(request):
         username = data.get('username')
         email = data.get('email')
         password = data.get('password')
+        school = (data.get('school') or "").strip()
 
-        if not username or not email or not password:
+        if not username or not email or not password or not school:
             return Response(
-                {"error": "username, email, and password are required"},
+                {"error": "username, email, password, and school are required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -184,6 +191,9 @@ def get_users(request):
             email=email,
             password=password
         )
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile.school = school
+        profile.save(update_fields=["school"])
 
         return Response(
             _serialize_user(request, user, viewer=user),
@@ -427,15 +437,31 @@ def user_profile_update(request, user_id):
         )
 
     avatar = request.FILES.get("avatar")
+    new_bio = request.POST.get("bio")
+    if new_bio is None:
+        new_bio = request.data.get("bio")
+    if isinstance(new_bio, str):
+        new_bio = new_bio.strip()
+    else:
+        new_bio = ""
+    new_school = request.POST.get("school")
+    if new_school is None:
+        new_school = request.data.get("school")
+    if isinstance(new_school, str):
+        new_school = new_school.strip()
+    else:
+        new_school = ""
     try:
         with transaction.atomic():
             user.username = new_username
             user.email = new_email
             user.save()
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            profile.bio = new_bio
+            profile.school = new_school
             if avatar:
-                profile, _ = UserProfile.objects.get_or_create(user=user)
                 profile.avatar = avatar
-                profile.save()
+            profile.save()
     except ProgrammingError as exc:
         return Response(
             {

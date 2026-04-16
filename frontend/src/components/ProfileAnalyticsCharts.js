@@ -60,13 +60,13 @@ function ProfileAnalyticsCharts({ analytics }) {
     <div style={sectionWrap}>
       <h2 style={sectionTitle}>Study insights</h2>
       <p style={sectionSubtitle}>
-        Weeks use Monday–Sunday (server local time). This week: {fmtShort(week_range_this?.start)}–
+        This week: {fmtShort(week_range_this?.start)}–
         {fmtShort(week_range_this?.end)}. Last week: {fmtShort(week_range_last?.start)}–
         {fmtShort(week_range_last?.end)}.
       </p>
 
-      <div style={grid2}>
-        <div style={card}>
+      <div style={insightsGrid}>
+        <div style={{ ...card, ...sessionsTrendCard }}>
           <h3 style={cardTitle}>Last 7 days — minutes studied</h3>
           <div style={{ width: "100%", height: 260 }}>
             <ResponsiveContainer>
@@ -110,7 +110,7 @@ function ProfileAnalyticsCharts({ analytics }) {
           </div>
         </div>
 
-        <div style={card}>
+        <div style={{ ...card, ...pieCard }}>
           <h3 style={cardTitle}>This week vs last week</h3>
           <p style={cardHint}>
             Share of your combined study time across these two weeks (minutes in each week).
@@ -158,66 +158,62 @@ function ProfileAnalyticsCharts({ analytics }) {
             </p>
           )}
         </div>
-      </div>
-
-      <div style={{ ...card, marginTop: 16 }}>
-        <h3 style={cardTitle}>How you compare (this week)</h3>
-        <p style={cardHint}>
-          Everyone is measured over the same window as "this week" above.
-        </p>
-        <div style={{ width: "100%", height: 220 }}>
-          <ResponsiveContainer>
-            <BarChart
-              layout="vertical"
-              data={compareBars}
-              margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke={colors.borderSubtle} horizontal={false} />
-              <XAxis type="number" domain={[0, maxBar * 1.15]} tick={{ fill: MUTED, fontSize: 11 }} />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={118}
-                tick={{ fill: colors.textMuted, fontSize: 12 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                formatter={(v) => [`${v} minutes`, ""]}
-                contentStyle={{
-                  borderRadius: radius.md,
-                  border: `1px solid ${colors.cardBorder}`,
-                  boxShadow: shadows.sm,
-                }}
-              />
-              <Bar dataKey="minutes" radius={[0, 6, 6, 0]} barSize={22}>
-                {compareBars.map((_, i) => (
-                  <Cell
-                    key={i}
-                    fill={
-                      i === 0 ? colors.primary : i === 1 ? colors.primarySoft : colors.chartTertiary
-                    }
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div style={compareFooter}>
-          {peerCount === 0 ? (
-            <p style={emptyText}>Add more student accounts to see a peer comparison.</p>
-          ) : beats === null || beats === undefined ? (
-            <p style={emptyText}>Comparison unavailable.</p>
-          ) : (
-            <p style={peerLine}>
-              You studied more than <strong>{beats}%</strong> of other students this week (
-              <strong>{peerCount}</strong> others on Trackademic).
+        <div style={{ ...card, ...comparisonCard }}>
+          <h3 style={cardTitle}>How you compare (this week)</h3>
+          <div style={{ width: "100%", height: 220 }}>
+            <ResponsiveContainer>
+              <BarChart
+                layout="vertical"
+                data={compareBars}
+                margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={colors.borderSubtle} horizontal={false} />
+                <XAxis type="number" domain={[0, maxBar * 1.15]} tick={{ fill: MUTED, fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={118}
+                  tick={{ fill: colors.textMuted, fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  formatter={(v) => [`${v} minutes`, ""]}
+                  contentStyle={{
+                    borderRadius: radius.md,
+                    border: `1px solid ${colors.cardBorder}`,
+                    boxShadow: shadows.sm,
+                  }}
+                />
+                <Bar dataKey="minutes" radius={[0, 6, 6, 0]} barSize={22}>
+                  {compareBars.map((_, i) => (
+                    <Cell
+                      key={i}
+                      fill={
+                        i === 0 ? colors.primary : i === 1 ? colors.primarySoft : colors.chartTertiary
+                      }
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={compareFooter}>
+            {peerCount === 0 ? (
+              <p style={emptyText}>Add more student accounts to see a peer comparison.</p>
+            ) : beats === null || beats === undefined ? (
+              <p style={emptyText}>Comparison unavailable.</p>
+            ) : (
+              <p style={peerLine}>
+                You studied more than <strong>{beats}%</strong> of other students this week (
+                <strong>{peerCount}</strong> others on Trackademic).
+              </p>
+            )}
+            <p style={peerLineMuted}>
+              Community average: {community?.avg_this_week_minutes} min · Median:{" "}
+              {community?.median_this_week_minutes} min
             </p>
-          )}
-          <p style={peerLineMuted}>
-            Community average: {community?.avg_this_week_minutes} min · Median:{" "}
-            {community?.median_this_week_minutes} min
-          </p>
+          </div>
         </div>
       </div>
     </div>
@@ -243,11 +239,23 @@ const sectionSubtitle = {
   lineHeight: 1.45,
 };
 
-const grid2 = {
+const insightsGrid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
   gap: "16px",
   alignItems: "stretch",
+};
+
+const sessionsTrendCard = {
+  gridColumn: "span 2",
+};
+
+const pieCard = {
+  gridColumn: "span 1",
+};
+
+const comparisonCard = {
+  gridColumn: "span 1",
 };
 
 const card = {

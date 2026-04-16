@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { login } from "../features/authSlice";
 import { useNavigate } from "react-router-dom";
+import SchoolSelect from "../components/SchoolSelect";
 
 function LoginPage() {
   const [isCreateMode, setIsCreateMode] = useState(false);
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
+  const [school, setSchool] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -45,7 +47,7 @@ function LoginPage() {
   };
 
   const handleCreateAccount = async () => {
-    if (!email || !username || !password || !confirmPassword) {
+    if (!email || !username || !password || !confirmPassword || !school) {
       alert("Please complete all fields");
       return;
     }
@@ -61,7 +63,7 @@ function LoginPage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ email, username, password })
+        body: JSON.stringify({ email, username, password, school })
       });
 
       const data = await res.json();
@@ -72,6 +74,7 @@ function LoginPage() {
 
       alert("Account created! You can now log in.");
       setIsCreateMode(false);
+      setSchool("");
       setPassword("");
       setConfirmPassword("");
     } catch (err) {
@@ -87,11 +90,19 @@ function LoginPage() {
         <p className="subtitle">Make studying social</p>
 
         {isCreateMode && (
+          <>
           <input
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+          <SchoolSelect
+            id="signup-school"
+            value={school}
+            onChange={setSchool}
+            placeholder="Search and select your school"
+          />
+          </>
         )}
 
         <input
@@ -132,6 +143,7 @@ function LoginPage() {
             setIsCreateMode((prev) => !prev);
             setEmail("");
             setUsername("");
+            setSchool("");
             setPassword("");
             setConfirmPassword("");
           }}
